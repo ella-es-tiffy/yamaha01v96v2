@@ -168,10 +168,22 @@ class Yamaha01V96Controller {
         }
         const v = Math.round(value);
         console.log(`🎚️ SetFader ${channel} -> ${v}`);
+
         if (channel === 'master') {
+            // Keep Master as SysEx for now unless we know the CC
             this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x00, 0x4F, 0x00, 0x00, (v >> 7) & 0x07, v & 0x7F, 0xF7]);
         } else {
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x01, 0x00, channel - 1, 0x1C, (v >> 7) & 0x7F, v & 0x7F, 0xF7]);
+            // Fader for Ch1-32 based on User Logs:
+            // Status B0 (Ch1), CC MSB = Channel, CC LSB = Channel + 32
+            // 14-bit Value Scaling: UI (0-1023) -> MIDI 14-bit (0-16383)
+            // Multiplying by 16.
+
+            const val14bit = v * 16;
+            const msbCC = channel;
+            // const lsbCC = channel + 32; // Disabling LSB to test interference
+
+            this.output.sendMessage([0xB0, msbCC, (val14bit >> 7) & 0x7F]);
+            // this.output.sendMessage([0xB0, lsbCC, val14bit & 0x7F]);
         }
     }
 
@@ -180,12 +192,22 @@ class Yamaha01V96Controller {
             console.warn('❌ Mute skipped: Not connected');
             return;
         }
-        const v = isMuted ? 0 : 1;
+
+        // Logs: Mute ON (Silence) -> 00, Mute OFF (Sound) -> 7F
+        const v = isMuted ? 0x00 : 0x7F;
         console.log(`🚫 SetMute ${channel} -> ${isMuted} (send ${v})`);
+
         if (channel === 'master') {
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x00, 0x4D, 0x00, 0x00, 0x00, v, 0xF7]);
+            // Keep Master as SysEx for now
+            const val = isMuted ? 0 : 1; // SysEx might use 0/1 logic, stick to old if unsure? 
+            // Old code: isMuted ? 0 : 1. 
+            // Let's assume SysEx uses 0/1.
+            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x00, 0x4D, 0x00, 0x00, 0x00, val, 0xF7]);
         } else {
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x01, 0x00, channel - 1, 0x1A, 0x00, v, 0xF7]);
+            // Mute for Ch1-32 based on User Logs:
+            // Status B0, CC = 63 + Channel (Ch1 -> 64/0x40)
+            const cc = 63 + channel;
+            this.output.sendMessage([0xB0, cc, v]);
         }
     }
 
