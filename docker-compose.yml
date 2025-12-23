@@ -1,0 +1,13 @@
+
+version: '3.8'
+
+services:
+  yamaha-remote:
+    build: .
+    container_name: yamaha_remote_app
+    ports:
+      - "8008:80"    # Web Interface via Apache
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/node_modules
+    restart: unless-stopped

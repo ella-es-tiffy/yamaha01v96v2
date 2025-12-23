@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Yamaha 01V96 Remote</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="ipad-frame">
+        <header>
+            <div class="brand-info">
+                <span class="brand">YAMAHA</span>
+                <span class="model">01V96 PRO TOUCH</span>
+            </div>
+            <div class="header-right">
+                <div class="bank-selector" style="display: flex; gap: 4px; margin-right: 15px;">
+                    <button class="bank-btn active" data-start="1">1-8</button>
+                    <button class="bank-btn" data-start="9">9-16</button>
+                    <button class="bank-btn" data-start="17">17-24</button>
+                    <button class="bank-btn" data-start="25">25-32</button>
+                </div>
+                <button id="sync-btn" class="action-btn sync-btn">
+                    ↻ FULL BULK SYNC
+                </button>
+                <button id="debug-btn"
+                    style="background: #333; color: white; border: 1px solid #555; border-radius: 4px; padding: 6px; font-size: 0.7rem; cursor: pointer;">BUG</button>
+                <div id="status" style="font-size: 0.7rem; color: #888;">Verbinde...</div>
+            </div>
+        </header>
+
+        <!-- DEBUG OVERLAY -->
+        <div id="debug-log"
+            style="display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 400px; background: rgba(0,0,0,0.95); color: #0f0; font-family: monospace; font-size: 0.85rem; overflow-y: auto; padding: 10px; z-index: 9999; border-top: 1px solid #0f0; white-space: pre-wrap; word-break: break-all; user-select: text;">
+            <div
+                style="color: #fff; border-bottom: 1px solid #333; margin-bottom: 5px; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                <span>--- MIDI LIVE MONITOR ---</span>
+                <button id="copy-debug"
+                    style="background: #0f0; color: #000; border: none; padding: 2px 8px; font-weight: bold; cursor: pointer; border-radius: 3px; font-size: 0.7rem;">COPY
+                    ALL</button>
+            </div>
+        </div>
+
+        <div class="mixer-layout-wrapper">
+            <div class="mixer-viewport" id="mixer">
+                <!-- JS Injects 8 strips -->
+            </div>
+
+            <div class="eq-section" id="eq-area">
+                <!-- JS Injects EQ Grid -->
+            </div>
+
+
+            <div class="master-section">
+                <div class="channel-strip master-strip" id="ch-master">
+                    <div class="ch-num">MASTER</div>
+                    <div class="on-button active" id="btn-master" data-ch="master">ON</div>
+                    <div class="fader-area" id="slot-master" data-ch="master">
+                        <div class="fader-track">
+                            <div class="fader-thumb" id="thumb-master"></div>
+                        </div>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="meter-master"></div>
+                    </div>
+                    <div class="db-val" id="val-master">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>

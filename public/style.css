@@ -1,0 +1,473 @@
+:root {
+    --accent: #00d2ff;
+    --bg-dark: #0a0a0a;
+    --bg-main: #0a0a0a;
+    --panel-bg: #141414;
+    --strip-bg: #1a1a1a;
+    --bg-card: #1a1a1a;
+    --fader-track: #080808;
+    --on-green: #34c759;
+    --on-glow: rgba(52, 199, 89, 0.4);
+    --text-main: #ffffff;
+    --text-primary: #ffffff;
+    --text-secondary: #888;
+    --fader-width: 58px;
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+.bank-btn {
+    background: #222;
+    color: #888;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.bank-btn.active {
+    background: #444;
+    color: white;
+    border-color: #666;
+}
+
+.action-btn {
+    background: #0088cc;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    margin-right: 10px;
+}
+
+.action-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+.action-btn.cooldown {
+    background: #333;
+    color: #666;
+    cursor: not-allowed;
+    pointer-events: none;
+    box-shadow: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn.cooldown::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--accent);
+    width: 0%;
+    animation: cooldown-bar 10s linear forwards;
+}
+
+@keyframes cooldown-bar {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: -apple-system, system-ui, sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
+    /* BLOCK SCROLLING OF BODY */
+}
+
+.ipad-frame {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 10px 45px 10px;
+    background: var(--bg-dark);
+    /* OFFSET FOR ADDRESS BAR */
+    touch-action: none;
+    /* KILL ALL BROWSER ZOOM GESTURES */
+}
+
+header {
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    background: #1a1a1a;
+    border-bottom: 2px solid #333;
+    border-radius: 8px 8px 0 0;
+}
+
+.brand {
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 1px;
+}
+
+.model {
+    color: var(--accent);
+    font-weight: 300;
+    font-size: 0.9rem;
+    margin-left: 5px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.mixer-layout-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    /* Center everything */
+    overflow: hidden;
+    margin-top: 10px;
+    gap: 15px;
+}
+
+.mixer-viewport {
+    flex: 0 0 auto;
+    /* Don't expand, just take space for channels */
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px 5px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+}
+
+.channel-strip {
+    width: var(--fader-width);
+    min-width: var(--fader-width);
+    background: linear-gradient(180deg, #222 0%, #151515 100%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+}
+
+.ch-num {
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.on-button {
+    width: 48px;
+    height: 32px;
+    border-radius: 4px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #444;
+    font-weight: 900;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.on-button.active {
+    background: var(--on-green);
+    color: white;
+    box-shadow: 0 0 10px var(--on-glow);
+    border-color: #55f080;
+}
+
+.eq-button {
+    width: 48px;
+    height: 24px;
+    border-radius: 4px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ccc;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-bottom: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.15s ease;
+}
+
+.eq-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.eq-button.active {
+    background: #ffcc00;
+    color: #000;
+    box-shadow: 0 0 8px rgba(255, 204, 0, 0.6);
+    border-color: #ffaa00;
+    text-shadow: none;
+}
+
+.sel-button {
+    width: 48px;
+    height: 32px;
+    border-radius: 4px;
+    background: #222;
+    border: 1px solid #444;
+    color: #888;
+    font-weight: 800;
+    font-size: 0.65rem;
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+
+.sel-button.active {
+    background: #0088cc;
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
+}
+
+.channel-strip.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(0, 210, 255, 0.2), inset 0 0 10px rgba(0, 210, 255, 0.1);
+    background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+}
+
+.fader-area {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+    touch-action: none;
+    /* KILL ZOOM ON FADERS */
+}
+
+.fader-track {
+    width: 5px;
+    height: 100%;
+    background: #111;
+    border-radius: 3px;
+    position: relative;
+    border: 1px solid #222;
+}
+
+.fader-thumb {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px;
+    height: 64px;
+    background: linear-gradient(180deg, #666 0%, #222 100%);
+    border: 1px solid #000;
+    border-radius: 4px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    top: 50%;
+    /* Default */
+}
+
+.fader-thumb::after {
+    content: '';
+    width: 100%;
+    height: 4px;
+    background: #fff;
+    opacity: 0.4;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.db-val {
+    margin-top: 15px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+}
+
+.master-section {
+    padding-left: 15px;
+    display: flex;
+}
+
+.master-strip {
+    width: 75px;
+    background: linear-gradient(180deg, rgba(0, 210, 255, 0.15) 0%, rgba(0, 50, 80, 0.3) 100%);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.master-strip .fader-thumb {
+    background: linear-gradient(180deg, var(--accent) 0%, #0088cc 100%);
+}
+
+/* EQ SECTION - YAMAHA HARDWARE STYLE */
+.eq-section {
+    flex: 0 0 420px;
+    /* Fixed narrower width */
+    max-width: 420px;
+    background: #111;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.eq-header {
+    display: grid;
+    grid-template-columns: 25px repeat(4, 1fr);
+    margin-bottom: 8px;
+}
+
+.eq-column-header {
+    text-align: center;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 1px #000;
+}
+
+.eq-grid {
+    display: grid;
+    grid-template-columns: 25px repeat(4, 1fr);
+    /* 1 Label col + 4 Band cols */
+    grid-template-rows: repeat(3, 1fr);
+    gap: 10px 2px;
+    flex: 1;
+}
+
+.row-label {
+    align-self: center;
+    justify-self: center;
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.knob-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: transparent;
+    padding: 2px;
+}
+
+.value-display {
+    background: #000a1a;
+    color: var(--accent);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.7rem;
+    font-weight: 900;
+    width: 54px;
+    text-align: center;
+    padding: 2px 0;
+    border: 1px solid #000;
+    margin-bottom: 6px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+    border-radius: 3px;
+    text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+}
+
+.knob-svg {
+    width: 48px;
+    height: 48px;
+    filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.4));
+}
+
+.knob-circle {
+    fill: url(#knobGradient);
+    stroke: #222;
+    stroke-width: 1;
+}
+
+.ring-bg {
+    stroke: #444;
+    stroke-width: 3;
+}
+
+.ring-active {
+    stroke: #ff9900;
+    /* Yamaha Orange Scale */
+    stroke-width: 4;
+}
+
+.knob-indicator {
+    stroke: #eee;
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+.knob-addr {
+    font-family: monospace;
+    font-size: 0.5rem;
+    color: #444;
+    margin-bottom: 2px;
+    line-height: 1.1;
+    min-height: 1.1rem;
+    /* Ensure space for 2 lines or alignment */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+/* FORCE EQ BUTTON STYLES */
+.eq-button {
+    width: 48px !important;
+    height: 24px !important;
+    background: #333 !important;
+    border: 1px solid #666 !important;
+    border-radius: 4px !important;
+    color: #fff !important;
+    font-weight: bold !important;
+    font-size: 11px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 5px !important;
+    cursor: pointer !important;
+}
+.eq-button.active {
+    background: #ffcc00 !important;
+    color: #000 !important;
+    border-color: #ffaa00 !important;
+    box-shadow: 0 0 8px #ffcc00 !important;
+}
