@@ -27,6 +27,16 @@ class Yamaha01V96Controller {
         };
     }
 
+    startMetering() {
+        if (this.meterInterval) clearInterval(this.meterInterval);
+        this.meterInterval = setInterval(() => {
+            if (this.connected) {
+                // F0 43 30 3E 0D 21 00 00 00 00 20 F7
+                this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00, 0x00, 0x00, 0x00, 0x20, 0xF7]);
+            }
+        }, 100);
+    }
+
     connect() {
         try {
             const portCount = this.output.getPortCount();
@@ -48,7 +58,8 @@ class Yamaha01V96Controller {
             });
 
             this.connected = true;
-            // setTimeout(() => this.requestInitialState(), 500);
+            setTimeout(() => this.requestInitialState(), 500);
+            this.startMetering(); // Ignite the meters!
             return true;
         } catch (error) {
             console.error('Connection failed:', error.message);
@@ -58,22 +69,30 @@ class Yamaha01V96Controller {
 
     async requestInitialState() {
         if (!this.connected) return;
-        console.log('📥 Starting Throttled Deep Sync (Faders, Mutes, EQ)...');
+        console.log('📥 Starting Throttled Deep Sync (Bulk Dump Request & Scan)...');
 
-        const params = [0x1C, 0x1A, ...Array.from({ length: 16 }, (_, i) => i)];
+        // 1. Send "Universal Bulk Dump" Request (Anfangssequenz erarbeitet)
+        // Format: F0 43 20 3E 0E 00 F7 (Based on previous analysis)
+        this.output.sendMessage([0xF0, 0x43, 0x20, 0x3E, 0x0E, 0x00, 0xF7]);
 
+        await new Promise(r => setTimeout(r, 100));
+
+        // 2. Fallback Scan (Faders & Mutes) just in case Bulk Dump parsing isn't fully covered
+        const params = [0x1C, 0x1A]; // Fader, Mute
+
+        // Scan Input Channels 1-32
         for (let channel = 0; channel < 32; channel++) {
             for (const addr of params) {
                 // Request Param: [F0 43 30 3E 7F 01 Area AddrH AddrM AddrL F7]
-                // Area 01 = Input Channels, AddrM = Channel, AddrL = Parameter
                 this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, 0x01, 0x00, channel, addr, 0xF7]);
                 await new Promise(r => setTimeout(r, 5));
             }
         }
 
-        // Master Fader & Mute (Area 0x00, AddrH 0x4F=Fader, 0x4D=Mute)
+        // Master Fader & Mute (Area 0x00)
         this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, 0x00, 0x4F, 0x00, 0x00, 0xF7]);
         this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, 0x00, 0x4D, 0x00, 0x00, 0xF7]);
+
         console.log('✅ Deep Sync Requests Sent.');
     }
 
@@ -83,6 +102,32 @@ class Yamaha01V96Controller {
         const data1 = message[1];
         const data2 = message[2];
         let changed = false;
+
+        // METER DATA PARSING (F0 43 10 3E 0D 21 ...)
+        if (message.length > 20 && message[0] === 0xF0 && message[4] === 0x0D && message[5] === 0x21) {
+            // Data starts at index 9: F0 43 10 3E 0D 21 00 00 00 [VAL1] [VAL2] ...
+            // Based on log: F0 43 10 3E 0D 21 00 00 00 [17] [45] ...
+            // It seems to be 1 byte per channel? Or interleaved?
+            // The kryops repo says: outMessage.levels[i+1] = message[(9 + 2*i)]; (Every 2nd byte?)
+
+            // Let's assume standard 1-byte values initially, or the stride logic.
+            // Log showed: 17 45 17 45 17 45 01 1C ...
+            // If stride is 2, it might be Low/High bytes or Peak/Hold?
+            // Kryops logic: message[(9 + 2*i)] -> Bytes 9, 11, 13...
+
+            for (let i = 0; i < 32; i++) {
+                const val = message[9 + (i * 2)]; // Try logic from repo
+                if (this.state.channels[i]) {
+                    this.state.channels[i].meter = val || 0;
+                }
+            }
+            // Master Meter? usually at the end.
+            this.state.master.meter = message[9 + (32 * 2)] || 0;
+
+            changed = true;
+            // Debounce state updates for meters to prevent flooding WS?
+            // For now, just let it rip.
+        }
 
         // 1. LIVE CC HANDLING
         const bandBaseMap = {
@@ -166,24 +211,27 @@ class Yamaha01V96Controller {
             console.warn('❌ Fader skipped: Not connected');
             return;
         }
+
+        let chInt = channel;
+        if (channel !== 'master') chInt = parseInt(channel, 10);
+
         const v = Math.round(value);
         console.log(`🎚️ SetFader ${channel} -> ${v}`);
 
         if (channel === 'master') {
-            // Keep Master as SysEx for now unless we know the CC
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x00, 0x4F, 0x00, 0x00, (v >> 7) & 0x07, v & 0x7F, 0xF7]);
+            // Master Fader based on Logs:
+            // Status B0, CC 1E (30) MSB, CC 3E (62) LSB.
+            // 14-bit Value Scaling: UI (0-1023) -> MIDI 14-bit
+            const val14bit = v * 16;
+            this.output.sendMessage([0xB0, 0x1E, (val14bit >> 7) & 0x7F]);
+            // this.output.sendMessage([0xB0, 0x3E, val14bit & 0x7F]); // Disable LSB if needed
         } else {
             // Fader for Ch1-32 based on User Logs:
             // Status B0 (Ch1), CC MSB = Channel, CC LSB = Channel + 32
-            // 14-bit Value Scaling: UI (0-1023) -> MIDI 14-bit (0-16383)
-            // Multiplying by 16.
-
+            // 14-bit Value Scaling
             const val14bit = v * 16;
-            const msbCC = channel;
-            // const lsbCC = channel + 32; // Disabling LSB to test interference
-
+            const msbCC = chInt;
             this.output.sendMessage([0xB0, msbCC, (val14bit >> 7) & 0x7F]);
-            // this.output.sendMessage([0xB0, lsbCC, val14bit & 0x7F]);
         }
     }
 
@@ -193,20 +241,21 @@ class Yamaha01V96Controller {
             return;
         }
 
+        let chInt = channel;
+        if (channel !== 'master') chInt = parseInt(channel, 10);
+
         // Logs: Mute ON (Silence) -> 00, Mute OFF (Sound) -> 7F
         const v = isMuted ? 0x00 : 0x7F;
         console.log(`🚫 SetMute ${channel} -> ${isMuted} (send ${v})`);
 
         if (channel === 'master') {
-            // Keep Master as SysEx for now
-            const val = isMuted ? 0 : 1; // SysEx might use 0/1 logic, stick to old if unsure? 
-            // Old code: isMuted ? 0 : 1. 
-            // Let's assume SysEx uses 0/1.
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x00, 0x4D, 0x00, 0x00, 0x00, val, 0xF7]);
+            // Master Mute based on Logs:
+            // Status B1 (Ch2), CC 1E (30).
+            this.output.sendMessage([0xB1, 0x1E, v]);
         } else {
             // Mute for Ch1-32 based on User Logs:
-            // Status B0, CC = 63 + Channel (Ch1 -> 64/0x40)
-            const cc = 63 + channel;
+            // Status B0, CC = 63 + Channel
+            const cc = 63 + chInt;
             this.output.sendMessage([0xB0, cc, v]);
         }
     }
@@ -298,6 +347,7 @@ class Yamaha01V96Controller {
     }
 
     disconnect() {
+        if (this.meterInterval) clearInterval(this.meterInterval);
         if (this.connected) {
             this.output.closePort();
             this.input.closePort();

@@ -75,11 +75,13 @@ class YamahaTouchRemote {
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
                 <div class="fader-area" id="slot-${i}" data-ch="${i}">
                     <div class="fader-track"><div class="fader-thumb" id="thumb-${i}"></div></div>
+                    <div class="meter-bar"><div class="meter-fill" id="meter-${i}"></div></div>
                 </div>
                 <div class="db-val" id="val-${i}">${chState?.fader || 0}</div>
             `;
             mixer.appendChild(strip);
             this.updateFaderUI(i, chState?.fader || 0);
+            this.updateMeterUI(i, chState?.meter || 0);
         }
         this.updateSelectionUI();
     }
@@ -409,9 +411,22 @@ class YamahaTouchRemote {
             const ch = this.state.channels[i - 1];
             this.updateFaderUI(i, ch.fader);
             this.updateMuteUI(i, ch.mute);
+            this.updateMeterUI(i, ch.meter);
         }
         this.updateFaderUI('master', this.state.master.fader);
         this.updateMuteUI('master', this.state.master.mute);
+    }
+
+    updateMeterUI(ch, val) {
+        const el = document.getElementById(`meter-${ch}`);
+        if (!el) return;
+        // 0-127 approx range
+        const pct = Math.min(100, (val / 60) * 100); // 01V meters are weird, peak is around 0x20-0x40? Let's guess scaling.
+        // Actually, typical MIDI VL is 0-127. 69 (0x45) is loud? 
+        el.style.height = `${pct}%`;
+        if (pct > 90) el.style.background = '#f00';
+        else if (pct > 70) el.style.background = '#ff0';
+        else el.style.background = '#0f0';
     }
 
     syncEQToSelected() {
