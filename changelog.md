@@ -1,5 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.66d] - 2024-12-24
+### Added
+- **Guidelines Update**: Added specific rules for `/dev` folder usage in `agents.md`.
+- **Infrastructure**: Established `/dev` as a persistent scratchpad for AI testing and sniffer scripts.
+
 ## [v0.65d] - 2024-12-24
 ### Changed
 - **Project Structure**: Cleaned up root directory. Moved all 70+ sniffer and debug scripts into the `/dev` folder.
