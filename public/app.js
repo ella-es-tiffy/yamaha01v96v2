@@ -76,6 +76,7 @@ class YamahaTouchRemote {
                 <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
                 <div class="eq-button ${chState?.eqOn ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
+                <div class="fader-addr" style="${this.debugUI ? '' : 'display:none;'}">1C 00 ${(i - 1).toString(16).toUpperCase().padStart(2, '0')}</div>
                 <div class="pan-area">
                     <div class="value-display pan-val" id="val-pan-${i}">--</div>
                     <svg class="knob-svg pan-knob" id="pan-${i}" viewBox="0 0 60 60" data-ch="${i}">
@@ -324,7 +325,13 @@ class YamahaTouchRemote {
             e.target.innerText = this.debugUI ? 'HIDE HEX' : 'VIEW HEX';
             e.target.style.background = this.debugUI ? 'var(--accent)' : '#333';
             e.target.style.color = this.debugUI ? '#000' : '#fff';
+
+            // Toggle all fader addresses
+            this.renderMixer();
             this.renderEQ();
+
+            const masterAddr = document.getElementById('addr-master');
+            if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
         });
 
         document.getElementById('copy-debug')?.addEventListener('click', () => {
@@ -457,7 +464,15 @@ class YamahaTouchRemote {
         knobEl.dataset.midi = val;
         const valEl = document.getElementById('val-' + knobEl.id);
         if (valEl) {
-            valEl.innerText = val.toString(16).toUpperCase().padStart(2, '0') + 'h';
+            if (knobEl.id.startsWith('pan-')) {
+                // PAN CUSTOM DISPLAY
+                if (val === 64) valEl.innerText = "CENTER (40h)";
+                else if (val < 64) valEl.innerText = `L${64 - val} (${val.toString(16).toUpperCase().padStart(2, '0')}h)`;
+                else valEl.innerText = `R${val - 64} (${val.toString(16).toUpperCase().padStart(2, '0')}h)`;
+            } else {
+                // DEFAULT HEX (EQ, etc)
+                valEl.innerText = val.toString(16).toUpperCase().padStart(2, '0') + 'h';
+            }
         }
     }
 
