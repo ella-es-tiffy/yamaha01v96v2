@@ -223,6 +223,8 @@
             document.getElementById('meter-display').appendChild(div);
         }
 
+        let lastState = null;
+
         ws.onmessage = (event) => {
             if (paused) return;
 
@@ -231,9 +233,8 @@
 
             if (data.type === 'midiLog') {
                 const isMeter = data.data[0] === 0xF0 && data.data[5] === 0x21;
-                if (filterMeters && isMeter) return; // Skip meter messages if filtered
+                if (filterMeters && isMeter) return;
 
-                // Check if message changed
                 const msgStr = JSON.stringify(data.data);
                 const changed = !lastMessage || lastMessage !== msgStr;
                 if (changed) {
@@ -241,17 +242,24 @@
                     lastMessage = msgStr;
                 }
 
-                if (showChangesOnly && !changed) return; // Skip unchanged if filter active
+                if (showChangesOnly && !changed) return;
 
                 logMidi(data.data, changed, data.isOutgoing);
             } else if (data.type === 'state') {
-                logState(data.data);
+                diffState(data.data);
+                lastState = JSON.parse(JSON.stringify(data.data));
             } else if (data.type === 'meters') {
-                logMeters(data.data);
+                // Meters visualization
+                for (let i = 0; i < 32; i++) {
+                    const val = data.data.channels[i] || 0;
+                    const el = document.getElementById(`meter-val-${i + 1}`);
+                    const item = document.getElementById(`meter-${i + 1}`);
+                    if (el) el.textContent = val;
+                    if (item) item.className = val > 10 ? 'meter-item active' : 'meter-item';
+                }
+
                 meterCount++;
                 stats.meters++;
-
-                // Update meter rate
                 const now = Date.now();
                 if (now - lastMeterTime >= 1000) {
                     stats.meterRate = meterCount;
@@ -259,78 +267,102 @@
                     lastMeterTime = now;
                 }
             }
-
             updateStats();
         };
 
-        function updateFilters() {
-            filterMeters = document.getElementById('filter-meters').checked;
-            showChangesOnly = document.getElementById('show-changes-only').checked;
+        function diffState(newState) {
+            if (!lastState) {
+                logToStatePanel("Initial State received");
+                return;
+            }
+
+            // Check selected channel
+            if (newState.selectedChannel !== lastState.selectedChannel) {
+                logToStatePanel(`Selection: ${lastState.selectedChannel} -> ${newState.selectedChannel}`, '#0ff');
+            }
+
+            // Check Master
+            if (newState.master.fader !== lastState.master.fader) {
+                logToStatePanel(`Master Fader: ${newState.master.fader}`, '#00d2ff');
+            }
+            if (newState.master.mute !== lastState.master.mute) {
+                logToStatePanel(`Master ON: ${!newState.master.mute}`, '#00d2ff');
+            }
+
+            // Check Channels
+            newState.channels.forEach((ch, i) => {
+                const oldCh = lastState.channels[i];
+                if (!oldCh) return;
+
+                if (ch.fader !== oldCh.fader) logToStatePanel(`CH${i + 1} Fader: ${ch.fader}`);
+                if (ch.mute !== oldCh.mute) logToStatePanel(`CH${i + 1} ON: ${!ch.mute}`);
+                if (ch.eqOn !== oldCh.eqOn) logToStatePanel(`CH${i + 1} EQ ON: ${ch.eqOn}`);
+
+                // EQ
+                ['low', 'lmid', 'hmid', 'high'].forEach(b => {
+                    ['q', 'freq', 'gain'].forEach(p => {
+                        if (ch.eq[b][p] !== oldCh.eq[b][p]) {
+                            logToStatePanel(`CH${i + 1} EQ ${b.toUpperCase()} ${p}: ${ch.eq[b][p]}`, '#fb0');
+                        }
+                    });
+                });
+            });
+        }
+
+        function logToStatePanel(text, color = '#aaa') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.color = color;
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${text}`;
+            const log = document.getElementById('state-log');
+            log.appendChild(entry);
+            if (log.children.length > 50) log.removeChild(log.firstChild);
+            log.scrollTop = log.scrollHeight;
         }
 
         function logMidi(msg, changed = false, isOutgoing = false) {
             const hex = msg.map(b => b.toString(16).padStart(2, '0')).join(' ');
-            const type = msg[0] === 0xF0 ? 'sysex' : (msg[0] >= 0xB0 && msg[0] <= 0xBF) ? 'cc' : 'other';
+            let type = msg[0] === 0xF0 ? 'sysex' : (msg[0] >= 0xB0 && msg[0] <= 0xBF) ? 'cc' : 'other';
+            let label = type.toUpperCase();
 
-            if (type === 'sysex') stats.sysex++;
+            // Basic decoder
+            let detail = "";
+            if (type === 'sysex' && msg[3] === 0x3e) {
+                if (msg[5] === 0x01) {
+                    const el = msg[6];
+                    const p2 = msg[8];
+                    const val = (msg[11] << 7) | msg[12];
+                    const elName = { 0x1C: 'Fader', 0x1A: 'ON', 0x1B: 'Pan', 0x20: 'EQ', 0x4F: 'MasterFader', 0x4D: 'MasterON' }[el] || `Elem:${el.toString(16)}`;
+                    detail = ` <span style="color:#fff;">(${elName} Ch:${p2 + 1} val:${val})</span>`;
+                } else if (msg[4] === 0x0d) {
+                    detail = ` <span style="color:#0ff;">(SYSTEM/SEL)</span>`;
+                }
+            } else if (type === 'cc') {
+                detail = ` <span style="color:#f0f;">(CC ${msg[1]} val:${msg[2]})</span>`;
+            }
+
+            if (type === 'sysex' && msg[5] === 0x21) {
+                label = 'METER';
+                type = 'meter';
+                detail = "";
+            }
 
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
-
-            let label = type.toUpperCase();
-            if (type === 'sysex' && msg[5] === 0x21) {
-                label = 'METER';
-                entry.className = 'log-entry meter';
-            }
 
             const direction = isOutgoing ?
                 '<span style="color:#fff; background:#555; padding:0 4px; margin-right:5px; border-radius:2px;">OUT</span>' :
                 '<span style="color:#0f0; border:1px solid #0f0; padding:0 4px; margin-right:5px; border-radius:2px;">IN</span>';
 
-            // Highlight changed messages
             const changeIndicator = changed ? '<span style="background:#f00; color:#fff; padding:0 4px; margin-right:5px;">NEW</span>' : '';
-
-            entry.innerHTML = `${direction}${changeIndicator}[${new Date().toLocaleTimeString()}] <strong>${label}</strong>: ${hex}`;
+            entry.innerHTML = `${direction}${changeIndicator}[${new Date().toLocaleTimeString()}] <strong>${label}</strong>: ${hex}${detail}`;
 
             const log = document.getElementById('midi-log');
             log.appendChild(entry);
             if (log.children.length > 100) log.removeChild(log.firstChild);
             log.scrollTop = log.scrollHeight;
-        }
 
-        function logState(state) {
-            const entry = document.createElement('div');
-            entry.className = 'log-entry other';
-            entry.innerHTML = `[${new Date().toLocaleTimeString()}] STATE UPDATE: ${Object.keys(state).join(', ')}`;
-
-            const log = document.getElementById('state-log');
-            log.appendChild(entry);
-            if (log.children.length > 50) log.removeChild(log.firstChild);
-            log.scrollTop = log.scrollHeight;
-        }
-
-        function logMeters(data) {
-            // Update visual meter display
-            for (let i = 0; i < 32; i++) {
-                const val = data.channels[i] || 0;
-                const el = document.getElementById(`meter-val-${i + 1}`);
-                const item = document.getElementById(`meter-${i + 1}`);
-                if (el) el.textContent = val;
-                if (item) {
-                    item.className = val > 10 ? 'meter-item active' : 'meter-item';
-                }
-            }
-
-            // Log to state panel
-            const activeChannels = data.channels.map((v, i) => v > 10 ? i + 1 : null).filter(x => x).join(', ');
-            const entry = document.createElement('div');
-            entry.className = 'log-entry meter';
-            entry.innerHTML = `[${new Date().toLocaleTimeString()}] METERS: Active: ${activeChannels || 'none'} | Master: ${data.master}`;
-
-            const log = document.getElementById('state-log');
-            log.appendChild(entry);
-            if (log.children.length > 50) log.removeChild(log.firstChild);
-            log.scrollTop = log.scrollHeight;
+            if (type === 'sysex') stats.sysex++;
         }
 
         function updateStats() {

@@ -174,6 +174,14 @@ class YamahaTouchRemote {
             this.send('setFader', { channel: chId, value });
         };
 
+        // Channel Selection (SEL buttons)
+        document.querySelector('.mixer-layout-wrapper').addEventListener('click', (e) => {
+            const selBtn = e.target.closest('.sel-button');
+            if (selBtn) {
+                this.selectChannel(selBtn.dataset.ch);
+            }
+        });
+
         // Bank Buttons
         document.querySelectorAll('.bank-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -372,9 +380,12 @@ class YamahaTouchRemote {
 
     updateKnobAddresses() {
         const ch = this.selectedChannel;
+        if (ch === 'master') return; // Master has no EQ
+
         const isUpper = ch > 24;
         const statusMap = { low: 0xB2, lmid: 0xB4, hmid: 0xB6, high: 0xB8 };
         const baseCCMap = { gain: 0x21, freq: 0x40, q: 0x59 };
+
         ['low', 'lmid', 'hmid', 'high'].forEach(band => {
             ['q', 'freq', 'gain'].forEach(param => {
                 const id = `enc-${band}-${param}`;
@@ -395,21 +406,24 @@ class YamahaTouchRemote {
 
     updateKnobUI(knobEl, midiVal) {
         if (!knobEl) return;
-        const deg = ((midiVal / 127) * 260) - 130;
+
+        // Safety check for NaN or undefined values often caused by mid-sync state updates
+        const val = (midiVal === undefined || isNaN(midiVal)) ? 64 : midiVal;
+
+        const deg = ((val / 127) * 260) - 130;
         const indicator = knobEl.querySelector('.knob-indicator');
         if (indicator) {
             indicator.setAttribute('transform', `rotate(${deg}, 30, 30)`);
         }
         const ring = document.getElementById('ring-' + knobEl.id);
         if (ring) {
-            const offset = 120 - ((midiVal / 127) * 120);
+            const offset = 120 - ((val / 127) * 120);
             ring.setAttribute('stroke-dashoffset', offset);
         }
-        knobEl.dataset.midi = midiVal;
+        knobEl.dataset.midi = val;
         const valEl = document.getElementById('val-' + knobEl.id);
         if (valEl) {
-            // FORMAT AS HEX
-            valEl.innerText = midiVal.toString(16).toUpperCase().padStart(2, '0') + 'h';
+            valEl.innerText = val.toString(16).toUpperCase().padStart(2, '0') + 'h';
         }
     }
 

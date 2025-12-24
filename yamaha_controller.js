@@ -12,18 +12,27 @@ class Yamaha01V96Controller {
 
         this.state = {
             selectedChannel: 1,
-            channels: Array(32).fill(null).map((_, i) => ({
+            channels: Array(36).fill(null).map((_, i) => ({
                 number: i + 1,
+                name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`,
                 fader: 0,
                 mute: false,
+                solo: false,
+                pan: 64,
+                att: 0,
+                eqOn: false,
+                eqType: 0,
                 eq: {
                     low: { gain: 64, freq: 64, q: 64 },
                     lmid: { gain: 64, freq: 64, q: 64 },
                     hmid: { gain: 64, freq: 64, q: 64 },
                     high: { gain: 64, freq: 64, q: 64 }
-                }
+                },
+                gate: { on: false, thr: 0, range: 0, atk: 0, rel: 0, hold: 0 },
+                comp: { on: false, thr: 0, rat: 0, atk: 0, rel: 0, gain: 0, knee: 0 },
+                routing: { stereo: false, direct: false, bus: Array(8).fill(false) }
             })),
-            master: { fader: 0, mute: false }
+            master: { fader: 0, mute: false, solo: false }
         };
     }
 
@@ -87,6 +96,8 @@ class Yamaha01V96Controller {
     handleMidiMessage(deltaTime, message) {
         if (!message || message.length < 3) return;
 
+        if (this.onRawMidi) this.onRawMidi(message, false);
+
         const status = message[0];
         const data1 = message[1];
         const data2 = message[2];
@@ -94,134 +105,158 @@ class Yamaha01V96Controller {
         let meterChanged = false;
 
         // METER DATA PARSING
-        // Accepts both device IDs (43 10 and 43 30)
-        // message[5] == 0x21, length >= 70
-        // Data at index 9 with stride 2
-        // Structure: 32 channels, then 8 bus, 8 aux, then stereo master L/R
         if (message.length >= 70 && message[0] === 0xF0 && message[1] === 0x43 && message[5] === 0x21) {
-            // Parse 32 channel meters
             for (let i = 0; i < 32; i++) {
                 const val = message[9 + (i * 2)];
-                if (this.state.channels[i]) {
-                    this.state.channels[i].meter = val || 0;
-                }
+                if (this.state.channels[i]) this.state.channels[i].meter = val || 0;
             }
-
-            // Master L/R is after: 32 channels + 8 bus + 8 aux = 48 meters
-            // Position: 9 + (48 * 2) = 105 for L, 107 for R
             const masterL = message[9 + (48 * 2)] || 0;
             const masterR = message[9 + (49 * 2)] || 0;
-
-            // Use average or max for single master meter
             this.state.master.meter = Math.max(masterL, masterR);
-            this.state.master.meterL = masterL;
-            this.state.master.meterR = masterR;
-
             meterChanged = true;
         }
 
-
-        // 1. CC HANDLING (Optional / Legacy)
-        if (status >= 0xB0 && status <= 0xBF) {
-            // Prioritize SysEx for faders, so we ignore CC 7 for faders to prevent jumping
-            if (data1 === 0x07) return;
-
-            // Live EQ CC Handling (keep for fast feedback if mixer sends it)
-            const bandBaseMap = {
-                0xB2: 'low', 0xB3: 'low', 0xB4: 'lmid', 0xB5: 'lmid',
-                0xB6: 'hmid', 0xB7: 'hmid', 0xB8: 'high', 0xB9: 'high',
-                0xBC: 'low', 0xBD: 'low'
-            };
-            if (bandBaseMap[status]) {
-                const band = bandBaseMap[status];
-                let type = ''; let chOffset = -1;
-                if (data1 >= 0x21 && data1 <= 0x38) { type = 'gain'; chOffset = data1 - 0x21; }
-                else if (data1 >= 0x40 && data1 <= 0x57) { type = 'freq'; chOffset = data1 - 0x40; }
-                else if (data1 >= 0x59 && data1 <= 0x70) { type = 'q'; chOffset = data1 - 0x59; }
-                if (status === 0xBC) chOffset = data1 - 0x21;
-                if (status === 0xBD) chOffset = (data1 - 0x21) + 24;
-                if (chOffset >= 0 && chOffset < 32) {
-                    this.state.channels[chOffset].eq[band][type] = (type === 'q' ? 127 - data2 : data2);
-                    changed = true;
-                }
-            }
-        }
-
-        // 2. NEW SYSEX PARSING (F0 43 ... F7)
+        // 2. OPTIMIZED SYSEX PARSING (The "Yellow" messages)
         if (message[0] === 0xF0 && message[1] === 0x43 && message[3] === 0x3E) {
 
-            // A: Parameter Changes (Element based) - 14 Bytes
-            if (message[5] === 0x01 && message.length >= 13) {
-                const element = message[6];
-                const p1 = message[7];
-                const p2 = message[8];
-                const val14 = (message[11] << 7) | message[12];
-                const val7 = message[12];
+            // A: Parameter Changes (Element based)
+            let markerPos = -1;
+            if (message[4] === 0x7F && message[5] === 0x01) markerPos = 4;
+            else if (message[5] === 0x7F && message[6] === 0x01) markerPos = 5;
 
-                if ([0x1C, 0x1A, 0x1B, 0x20].includes(element)) {
-                    const chIdx = p2;
-                    if (chIdx >= 0 && chIdx < 32) {
-                        const ch = this.state.channels[chIdx];
-                        switch (element) {
-                            case 0x1C: // Fader (0-1023)
-                                ch.fader = val14;
-                                changed = true;
-                                break;
-                            case 0x1A: // Mute
-                                ch.mute = (val7 === 0);
-                                changed = true;
-                                break;
-                            case 0x1B: // Pan
-                                ch.pan = (message[9] === 0x7F) ? (64 - (128 - val7)) : (64 + val7);
-                                changed = true;
-                                break;
-                            case 0x20: // EQ
-                                if (p1 === 0x0F) {
-                                    ch.eqOn = (val7 === 1);
-                                    changed = true;
-                                } else {
-                                    const revMap = {
-                                        0x01: { b: 'low', p: 'q' }, 0x02: { b: 'low', p: 'freq' }, 0x03: { b: 'low', p: 'gain' },
-                                        0x04: { b: 'lmid', p: 'q' }, 0x05: { b: 'lmid', p: 'freq' }, 0x06: { b: 'lmid', p: 'gain' },
-                                        0x07: { b: 'hmid', p: 'q' }, 0x08: { b: 'hmid', p: 'freq' }, 0x09: { b: 'hmid', p: 'gain' },
-                                        0x0A: { b: 'high', p: 'q' }, 0x0B: { b: 'high', p: 'freq' }, 0x0C: { b: 'high', p: 'gain' }
-                                    };
-                                    const m = revMap[p1];
-                                    if (m) {
-                                        let finalVal = val7;
-                                        if (m.p === 'q') finalVal = Math.round((val7 / 39) * 127);
-                                        if (m.p === 'gain') {
-                                            const rawG = (message[9] === 0x7F) ? -((0x7F - message[11]) * 128 + (0x80 - message[12])) : val14;
-                                            finalVal = Math.round(((rawG + 180) / 360) * 127);
-                                        }
-                                        ch.eq[m.b][m.p] = finalVal;
-                                        changed = true;
+            if (markerPos !== -1) {
+                const head = markerPos + 2;
+                const element = message[head];
+                const p1 = message[head + 1];
+                const p2 = message[head + 2];
+                const f7Pos = message.indexOf(0xF7);
+
+                if (f7Pos >= 12) {
+                    const val14 = (message[f7Pos - 2] << 7) | message[f7Pos - 1];
+                    const val7 = message[f7Pos - 1];
+
+                    // --- Advanced Element Mapping ---
+                    // 1C=Fader, 1A=Mute, 1B=Pan, 20=EQ, 12=Att (Trim), 2B=AuxSend, 1E=Gate, 1F=Comp, 22=Routing
+                    if ([0x1C, 0x1A, 0x1B, 0x20, 0x12, 0x2B, 0x1E, 0x1F, 0x22].includes(element)) {
+                        if (p2 >= 0 && p2 < 36) {
+                            const ch = this.state.channels[p2];
+                            switch (element) {
+                                case 0x1C: ch.fader = val14; break;
+                                case 0x1A: ch.mute = (val7 === 0); break;
+                                case 0x1B: ch.pan = (message[f7Pos - 3] === 0x7F) ? (64 - (128 - val7)) : (64 + val7); break;
+                                case 0x12: ch.att = val7; break;
+                                case 0x22: // Routing (Bus, Stereo, Direct)
+                                    if (p1 === 0x00) ch.routing.stereo = (val7 === 1);
+                                    else if (p1 === 0x02) ch.routing.direct = (val7 === 1);
+                                    else if (p1 >= 0x03 && p1 <= 0x0A) {
+                                        ch.routing.bus[p1 - 0x03] = (val7 === 1);
                                     }
-                                }
-                                break;
+                                    break;
+                                case 0x1E: // Gate (Dynamics 1)
+                                    if (p1 === 0x01) ch.gate.on = (val7 === 1);
+                                    else {
+                                        const gm = { 0x04: 'thr', 0x05: 'range', 0x06: 'atk', 0x07: 'rel', 0x08: 'hold' }[p1];
+                                        if (gm) ch.gate[gm] = val14;
+                                    }
+                                    break;
+                                case 0x1F: // Comp (Dynamics 2)
+                                    if (p1 === 0x01) ch.comp.on = (val7 === 1);
+                                    else {
+                                        const cm = { 0x04: 'thr', 0x05: 'rat', 0x06: 'atk', 0x07: 'rel', 0x08: 'knee', 0x09: 'gain' }[p1];
+                                        if (cm) {
+                                            let cv = val14;
+                                            if (p1 === 0x09) { // Signed Gain
+                                                cv = (message[f7Pos - 4] === 0x7F) ? -((0x7F - message[f7Pos - 2]) * 128 + (0x80 - message[f7Pos - 1])) : val14;
+                                            }
+                                            ch.comp[cm] = cv;
+                                        }
+                                    }
+                                    break;
+                                case 0x20:
+                                    if (p1 === 0x0F) ch.eqOn = (val7 === 1);
+                                    else if (p1 === 0x0E) ch.eqType = val7;
+                                    else {
+                                        const m = {
+                                            0x01: { b: 'low', p: 'q' }, 0x02: { b: 'low', p: 'freq' }, 0x03: { b: 'low', p: 'gain' },
+                                            0x04: { b: 'lmid', p: 'q' }, 0x05: { b: 'lmid', p: 'freq' }, 0x06: { b: 'lmid', p: 'gain' },
+                                            0x07: { b: 'hmid', p: 'q' }, 0x08: { b: 'hmid', p: 'freq' }, 0x09: { b: 'hmid', p: 'gain' },
+                                            0x0A: { b: 'high', p: 'q' }, 0x0B: { b: 'high', p: 'freq' }, 0x0C: { b: 'high', p: 'gain' }
+                                        }[p1];
+                                        if (m && ch.eq) {
+                                            let fv = val7;
+                                            if (m.p === 'gain') {
+                                                const rawG = (message[f7Pos - 4] === 0x7F) ? -((0x7F - message[f7Pos - 2]) * 128 + (0x80 - message[f7Pos - 1])) : val14;
+                                                fv = Math.round(((rawG + 180) / 360) * 127);
+                                            }
+                                            if (!isNaN(fv)) ch.eq[m.b][m.p] = fv;
+                                        }
+                                    }
+                                    break;
+                            }
+                            changed = true;
+                        }
+                    } else if (element === 0x4F) { this.state.master.fader = val14; changed = true; }
+                    else if (element === 0x4D) { this.state.master.mute = (val7 === 0); changed = true; }
+                    else {
+                        // Discovery: Log unknown elements for Gate, Compressor, etc.
+                        console.log(`🔍 DISCOVERY: Element: 0x${element.toString(16).toUpperCase()} P1: 0x${p1.toString(16).toUpperCase()} P2: 0x${p2.toString(16).toUpperCase()} Val: ${val14}`);
+                    }
+                }
+            }
+
+            // B: Hardware SELECTION & SOLO/CUE
+            if (message[4] === 0x0D) {
+                // Address 04 09 18 = Selection
+                // We check for the specific length and pattern of a SEL message
+                if (message[5] === 0x04 && message[6] === 0x09 && message[7] === 0x18 && message.length >= 12) {
+                    const val = message[message.indexOf(0xF7) - 1];
+                    if (val >= 0 && val <= 56) {
+                        const newSel = (val === 56) ? 'master' : (val + 1);
+                        if (this.state.selectedChannel !== newSel) {
+                            console.log(`📡 Mixer HW Selection -> ${newSel}`);
+                            this.state.selectedChannel = newSel;
+                            changed = true;
                         }
                     }
                 }
-                else if (element === 0x4F) { this.state.master.fader = val14; changed = true; }
-                else if (element === 0x4D) { this.state.master.mute = (val7 === 0); changed = true; }
+                // Address 03 2E = Solo/Cue
+                if (message[5] === 0x03 && message[6] === 0x2E) {
+                    const chIdx = message[8];
+                    const val = message[message.indexOf(0xF7) - 1];
+                    if (chIdx < 36 && this.state.channels[chIdx]) {
+                        this.state.channels[chIdx].solo = (val === 1);
+                        changed = true;
+                    } else if (chIdx === 56) {
+                        this.state.master.solo = (val === 1);
+                        changed = true;
+                    }
+                }
             }
+        }
 
-            // B: System Parameter Changes (SELECTION 09 18)
-            else if (message[4] === 0x0D && message[6] === 0x09 && message[7] === 0x18) {
-                const val = message[12];
-                this.state.selectedChannel = (val === 56) ? 'master' : (val + 1);
-                console.log(`📡 Mixer Selection -> ${this.state.selectedChannel}`);
-                changed = true;
-            }
+        // 2. CC HANDLING (Fallback)
+        if (status >= 0xB0 && status <= 0xBF && message[0] !== 0xF0) {
+            // Processing for mutes/faders if user enables CC TX again...
+            // (Optional, simplified for now)
         }
 
         // Separate callbacks for meters vs other state changes
-        if (meterChanged && this.onMeterChange) {
-            this.onMeterChange(this.state);
-        }
+        if (meterChanged && this.onMeterChange) this.onMeterChange(this.state);
 
         if (changed && this.onStateChange) {
-            this.onStateChange(this.state);
+            if (!this._stateThrottle) {
+                this._stateThrottle = setTimeout(() => {
+                    this.onStateChange(this.state);
+                    this._stateThrottle = null;
+                }, 100);
+            }
+        }
+    }
+
+    setSelectedChannel(ch) {
+        const newSel = (ch === 'master') ? 'master' : parseInt(ch, 10);
+        if (this.state.selectedChannel !== newSel) {
+            this.state.selectedChannel = newSel;
         }
     }
 

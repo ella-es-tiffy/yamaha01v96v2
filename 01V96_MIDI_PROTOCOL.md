@@ -3,72 +3,74 @@
 This document lists the discovered MIDI System Exclusive (SysEx) messages for controlling the Yamaha 01V96 digital mixer. 
 
 **Base Message Structure:**
-All messages start with the Yamaha Header: `F0 43 10 3E`
-And end with the End of Exclusive: `F7`
+- All messages start with the Yamaha Header: `F0 43 nn 3E` (where `nn` is device ID, usually `10` or `30`)
+- End of Exclusive: `F7`
 
 ---
 
 ## 1. Parameter Change (Live Control)
 Format: `F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7`
 
-| Element | Parameter | P1 | P2 | Data Format | Notes |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **0x1C** | Channel Fader | 0x00 | Ch Index (0-31) | 10-bit: `00 00 (V>>7) (V&7F)` | 0-1023 range |
-| **0x4F** | Master Fader | 0x00 | 0x00 | 10-bit: `00 00 (V>>7) (V&7F)` | Master Level |
-| **0x1A** | Channel Mute/On | 0x00 | Ch Index (0-31) | `00 00 00 01/00` | 1 = ON, 0 = MUTED |
-| **0x4D** | Master Mute/On | 0x00 | 0x00 | `00 00 00 01/00` | 1 = ON, 0 = MUTED |
-| **0x1B** | Channel Pan | 0x00 | Ch Index (0-31) | Signed 7-bit | Center=0, Right=+63 (`00 00 00 3F`), Left=-63 (`7F 7F 7F 41`) |
-| **0x20** | **EQ Settings** | | Ch Index (0-31) | 4-byte scale | Scaling depends on parameter |
-| | - EQ On/Off | **0x0F** | | `00 00 00 01/00` | High-level switch for the channel EQ |
-| | - Low Q | **0x01** | | 0x00 - 0x27 | Range 0.1 to 10.0 (Skaliert 0-39) |
-| | - Low Freq | **0x02** | | 0.1dB steps | 20Hz - 20kHz |
-| | - Low Gain | **0x03** | | Signed `-180` to `+180` | -18.0dB to +18.0dB in 0.1dB steps |
-| | - L-Mid (Q/F/G) | **04/05/06** | | Same as Low | |
-| | - H-Mid (Q/F/G) | **07/08/09** | | Same as Low | |
-| | - High (Q/F/G) | **0A/0B/0C** | | Same as Low | |
+| Element | Parameter | P1 | P2 (Channel Source) | Data Format / Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **0x1C** | Fader | 0x00 | 0-31 (CH), 32-35 (ST), 36-43 (Bus), 44-51 (Aux) | 10-bit: `00 00 (V>>7) (V&7F)` |
+| **0x1A** | Mute / ON | 0x00 | same as above | `00 00 00 01` (ON), `00 00 00 00` (MUTED) |
+| **0x1B** | Pan | 0x00 | 0-31 (CH) | Signed 7-bit: L63=`7F 7F 7F 41`, C=`00`, R63=`3F` |
+| **0x12** | Attenuation | 0x00 | 0-31 (CH) | 7-bit: 0-127 (Digital Gain/Trim) |
+| **0x2B** | Aux Send | 0-7 (Aux#) | 0-31 (CH) | 10-bit: Level of the channel to specific Aux |
+| **0x22** | Routing | 0x00 (ST), 0x02 (DIR), 0x03-0A (Bus 1-8) | 0-31 (CH) | `01` (Active), `00` (Inactive) |
+| **0x4F** | Master Fader | 0x00 | 0x00 (Fixed) | 10-bit Master Level |
+| **0x4D** | Master Mute | 0x00 | 0x00 (Fixed) | `01` (ON), `00` (MUTED) |
 
----
-
-## 2. System Parameter Change (Selection & More)
-Format: `F0 43 10 3E 0D 04 [AddrHigh] [AddrLow] 00 00 00 00 [Value] F7`
-
-| Address | Function | Values | Notes |
+### 1.1 EQ Parameters (Element 0x20)
+| P1 | Parameter | Band | Range / Notes |
 | :--- | :--- | :--- | :--- |
-| **09 18** | **Selected Channel** | `00` - `1F` (CH1-32) | Changes the focus/display on the mixer hardware |
-| | | `0x38` (56) | Master Selection |
+| **0x0F** | EQ On/Off | Global | 1 = ON, 0 = OFF |
+| **0x0E** | EQ Type | Global | 0 = Type I, 1 = Type II |
+| **0x01/02/03** | Q / Freq / Gain | **Low** | Gain is signed (18.0dB to -18.0dB) |
+| **0x04/05/06** | Q / Freq / Gain | **L-Mid** | |
+| **0x07/08/09** | Q / Freq / Gain | **H-Mid** | |
+| **0x0A/0B/0C** | Q / Freq / Gain | **High** | |
 
----
-
-## 3. Bulk Dump (Full State)
-Format: `F0 43 0n 7E [LenHigh] [LenLow] 4C 4D 20 20 38 43 39 33 [Block] ... F7`
-(Header: "LM  8C93")
-
-| Block ID | Hex | Content |
+### 1.2 Dynamics 1 - Gate (Element 0x1E)
+| P1 | Parameter | Notes |
 | :--- | :--- | :--- |
-| **m** | 0x6D | Scene / Memory Data |
-| **C** | 0x43 | **Channel Data (Faders, Mutes, Pans, EQs)** |
-| **S** | 0x53 | Setup Data |
-| **V** | 0x56 | VCA / Group Data |
-| **U** | 0x55 | User Defined Keys |
+| **0x01** | Gate ON/OFF | 1=ON |
+| **0x04** | Threshold | 10-bit scale |
+| **0x05** | Range | |
+| **0x06** | Attack | |
+| **0x07** | Release | |
+| **0x08** | Hold | |
+
+### 1.3 Dynamics 2 - Compressor (Element 0x1F)
+| P1 | Parameter | Notes |
+| :--- | :--- | :--- |
+| **0x01** | Comp ON/OFF | 1=ON |
+| **0x04** | Threshold | 10-bit scale |
+| **0x05** | Ratio | |
+| **0x06** | Attack | |
+| **0x07** | Release | |
+| **0x08** | Knee | 0-3 (Hard/Soft/...) |
+| **0x09** | Out Gain | Signed 10-bit |
 
 ---
 
-## 4. Metering
-To receive live meter levels for all channels:
+## 2. System Parameter Change (Selection & Solo)
+Format: `F0 43 10 3E 0D [Area] [AddrHigh] [AddrMid] [AddrLow] 00 00 00 [Value] F7`
 
-**Request:** `F0 43 10 3E 0D 21 F7`
-(Send periodically, e.g., every 30 seconds to keep the stream alive).
-
-**Response:** `F0 43 10 3E 21 [74 bytes of data] F7`
-The data contains the levels for all channels, buses, and auxes.
-- **CH1-32:** Start at byte index 6
-- **Master L/R:** Bytes 54 (L) and 55 (R)
+| Address (H M L) | Function | Range / Values |
+| :--- | :--- | :--- |
+| **04 09 18** | **Selected Channel** | `00-1F` (CH1-32), `20-23` (ST1-4), `38` (56=Master) |
+| **03 2E [CH]** | **Solo (Cue)** | `01` (ON), `00` (OFF). CH matches index above. |
+| **00 2E 00** | **User Define 1** | Triggers when the physical User-Def key is pressed |
 
 ---
 
-## 4. Special Messages
-- **Pult Busy/Ack:** `F0 43 10 3E 0D 7F F7`
-Often sent by the mixer between commands to indicate status.
+## 3. Metering
+Live levels are requested once to start the stream.
+- **Request:** `F0 43 10 3E 0D 21 F7`
+- **Response:** `F0 43 10 3E 21 [Data...] F7` (approx. 74-128 bytes depending on config)
+- **Data Index 9, Stride 2:** Standard Meter Data (0-127)
 
 ---
 
