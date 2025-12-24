@@ -151,8 +151,7 @@ header {
     display: flex;
     flex-direction: row;
     justify-content: center;
-    align-items: flex-start;
-    /* CRITICAL: Align all sections to top */
+    align-items: stretch;
     overflow: hidden;
     margin-top: 10px;
     gap: 15px;
@@ -165,6 +164,7 @@ header {
     flex-direction: row;
     gap: 8px;
     padding: 10px 5px;
+    height: 100%;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
 }
@@ -172,6 +172,7 @@ header {
 .channel-strip {
     width: var(--fader-width);
     min-width: var(--fader-width);
+    height: 100%;
     background: linear-gradient(180deg, #222 0%, #151515 100%);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 10px;
@@ -461,7 +462,8 @@ header {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     height: fit-content;
     margin-top: 10px;
-    /* MATCH FADERS */
+    align-self: flex-start;
+    /* Keep at top, don't stretch */
 }
 
 .eq-header {
