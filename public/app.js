@@ -146,7 +146,7 @@ class YamahaTouchRemote {
         innerGrid.style.padding = '10px';
 
         innerGrid.innerHTML = `
-            <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center; padding-top: 40px;">
+            <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center; padding-top: 30px;">
                 <div class="row-label" style="font-size: 0.6rem; color: #666;">ATT</div>
                 <div style="position: relative;">
                     <div class="value-display" id="val-enc-att" style="position: absolute; top: -15px; width: 60px; text-align: center; left: 50%; transform: translateX(-50%); font-size: 0.5rem; color: var(--accent);">--</div>
@@ -180,14 +180,43 @@ class YamahaTouchRemote {
         // Safety Cover
         const cover = document.createElement('div');
         cover.className = 'safety-cover';
-        cover.innerHTML = `<div class="safety-handle"></div><div class="safety-label">LOCK</div>`;
-        cover.addEventListener('click', () => {
-            cover.classList.add('open');
+        cover.id = 'eq-safety-cover';
+        cover.innerHTML = `
+            <div class="safety-handle"></div>
+            <div class="safety-label">LOCK</div>
+        `;
+
+        // Add a "CLOSE" tab that only appears when open
+        const closeTab = document.createElement('div');
+        closeTab.innerHTML = 'RE-LOCK';
+        closeTab.style.cssText = 'position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: #cc8800; color: #000; padding: 2px 10px; font-size: 0.5rem; font-weight: 900; border-radius: 4px 4px 0 0; cursor: pointer; display: none; transition: top 0.3s;';
+
+        // This tab will be visible when the cover is up (open)
+        globalRow.appendChild(closeTab);
+
+        cover.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!cover.classList.contains('open')) {
+                cover.classList.add('open');
+                closeTab.style.display = 'block';
+                setTimeout(() => closeTab.style.top = '0px', 10);
+            }
         });
 
-        // Auto-close when mouse leaves the header area
-        globalRow.addEventListener('mouseleave', () => {
+        closeTab.addEventListener('click', (e) => {
+            e.stopPropagation();
             cover.classList.remove('open');
+            closeTab.style.top = '-25px';
+            setTimeout(() => closeTab.style.display = 'none', 300);
+        });
+
+        // Keep auto-close on mouseleave for convenience
+        globalRow.addEventListener('mouseleave', () => {
+            if (cover.classList.contains('open')) {
+                cover.classList.remove('open');
+                closeTab.style.top = '-25px';
+                setTimeout(() => closeTab.style.display = 'none', 300);
+            }
         });
 
         globalRow.appendChild(innerGrid);
@@ -519,6 +548,20 @@ class YamahaTouchRemote {
                 }
             }
         });
+        // Global UI Lock Logic
+        const lockBtn = document.getElementById('lock-ui-btn');
+        const lockOverlay = document.getElementById('global-lock-overlay');
+        const unlockSurface = lockOverlay?.querySelector('.unlock-surface');
+
+        if (lockBtn && lockOverlay) {
+            lockBtn.addEventListener('click', () => {
+                lockOverlay.classList.add('active');
+            });
+
+            unlockSurface?.addEventListener('click', () => {
+                lockOverlay.classList.remove('active');
+            });
+        }
     }
 
     selectChannel(ch) {

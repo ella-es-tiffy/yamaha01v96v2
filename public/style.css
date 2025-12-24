@@ -747,3 +747,46 @@ input[type=range]::-webkit-slider-thumb {
     color: #ffaa00;
     text-shadow: 0 0 8px rgba(255, 180, 0, 0.5);
 }
+
+/* --- GLOBAL LOCK UI --- */
+.global-lock-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(15px);
+    z-index: 10000;
+    display: none;
+    /* Controlled by JS */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.5s ease;
+}
+
+.global-lock-overlay.active {
+    display: flex;
+}
+
+.unlock-surface {
+    padding: 60px 100px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 30px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.05);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.unlock-surface:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+}
+
+.unlock-surface:active div {
+    color: var(--accent) !important;
+}

@@ -169,7 +169,10 @@ class Yamaha01V96Controller {
                                 case 0x1C: ch.fader = val14; break;
                                 case 0x1A: ch.mute = (val7 === 0); break;
                                 case 0x1B: ch.pan = (message[f7Pos - 3] === 0x7F) ? (64 - (128 - val7)) : (64 + val7); break;
-                                case 0x1D: ch.att = val7; break;
+                                case 0x1D: // Attenuation (Signed 14-bit)
+                                    const rawAtt = (message[f7Pos - 4] === 0x7F) ? -((0x7F - message[f7Pos - 2]) * 128 + (0x80 - message[f7Pos - 1])) : val14;
+                                    ch.att = Math.round(((rawAtt + 960) / 1080) * 127);
+                                    break;
                                 case 0x22: // Routing (Bus, Stereo, Direct)
                                     if (p1 === 0x00) ch.routing.stereo = (val7 === 1);
                                     else if (p1 === 0x02) ch.routing.direct = (val7 === 1);
@@ -454,19 +457,26 @@ class Yamaha01V96Controller {
         if (!this.connected) return;
         const chIdx = (channel === 'master') ? 56 : (parseInt(channel) - 1);
 
-        // Map UI (0-127) -> Mixer (0-18000 approx for -96 to +12dB)
-        // User log: 0dB is ~16000. +12dB is likely ~18000. -96dB is 0.
-        // Formula: val * 144 (approx 127*144 = 18288)
-        const mixerVal = value * 142;
+        // Map UI (0-127) to Mixer Signed Decibels (-960 to +120)
+        // 0.1dB steps. -96.0dB = -960, +12.0dB = +120
+        const mixerVal = Math.round((value / 127) * 1080) - 960;
 
-        const d2 = (mixerVal >> 7) & 0x7F;
-        const d3 = mixerVal & 0x7F;
+        let d2, d3;
+        if (mixerVal >= 0) {
+            d2 = (mixerVal >> 7) & 0x7F;
+            d3 = mixerVal & 0x7F;
+            const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1D, 0x00, chIdx, 0x00, 0x00, d2, d3, 0xF7];
+            this.output.sendMessage(msg);
+        } else {
+            // Negative value encoding (7F 7F D2 D3)
+            const absVal = Math.abs(mixerVal);
+            d2 = 127 - Math.floor((absVal - 1) / 128);
+            d3 = 128 - ((absVal - 1) % 128 + 1);
+            const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1D, 0x00, chIdx, 0x7F, 0x7F, d2, d3, 0xF7];
+            this.output.sendMessage(msg);
+        }
 
-        // Data: 00 00 D2 D3 (Try positive first)
-        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1D, 0x00, chIdx, 0x00, 0x00, d2, d3, 0xF7];
-        this.output.sendMessage(msg);
-        if (this.onRawMidi) this.onRawMidi(msg, true);
-        console.log(`📉 Attenuation ${channel} -> ${value} (Mixer: ${mixerVal})`);
+        console.log(`📉 Attenuation ${channel} -> ${mixerVal / 10} dB (Mixer Raw: ${mixerVal})`);
     }
 
     setEQType(channel, type) {
