@@ -125,14 +125,49 @@ class YamahaTouchRemote {
             <div class="eq-header">
                 <div></div> <!-- Spacer for Label Col -->
                 <div class="eq-column-header">LOW</div>
-                <div class="eq-column-header">L-MID</div>
-                <div class="eq-column-header">H-MID</div>
+                <div class="eq-column-header">MID-LOW</div>
+                <div class="eq-column-header">MID-HIGH</div>
                 <div class="eq-column-header">HIGH</div>
             </div>
-            <div class="eq-grid" id="eq-grid"></div>
+            <div class="eq-grid" id="eq-grid" style="margin-top: 5px;"></div>
         `;
 
         const grid = document.getElementById('eq-grid');
+
+        // --- GLOBAL EQ SECTION (TOP) ---
+        const globalRow = document.createElement('div');
+        globalRow.style.display = 'grid';
+        globalRow.style.gridTemplateColumns = '80px 100px 1fr';
+        globalRow.style.gap = '20px';
+        globalRow.style.alignItems = 'center';
+        globalRow.style.marginBottom = '20px';
+        globalRow.style.padding = '0 10px';
+
+        globalRow.innerHTML = `
+            <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center;">
+                <div class="row-label" style="font-size: 0.6rem; color: #666;">ATT</div>
+                <div style="position: relative;">
+                    <div class="value-display" id="val-enc-att" style="position: absolute; top: -15px; width: 60px; text-align: center; left: 50%; transform: translateX(-50%); font-size: 0.5rem; color: var(--accent);">--</div>
+                    <svg class="knob-svg" id="enc-att" viewBox="0 0 60 60" style="width: 40px; height: 40px;">
+                        <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
+                        <path id="ring-enc-att" d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-active" stroke-linecap="round" stroke-dasharray="120" stroke-dashoffset="120" />
+                        <circle cx="30" cy="30" r="20" class="knob-circle"></circle>
+                        <line x1="30" y1="30" x2="30" y2="10" class="knob-indicator"></line>
+                    </svg>
+                </div>
+            </div>
+            <div style="display: flex; gap: 5px; flex-direction: column;">
+                <div class="row-label" style="font-size: 0.5rem; color: #666; margin-bottom: 2px;">EQ TYPE</div>
+                <div style="display: flex; gap: 4px;">
+                    <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
+                    <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
+                </div>
+            </div>
+            <div></div>
+        `;
+        eqArea.appendChild(globalRow);
+
+        grid.innerHTML = '';
         const bands = ['low', 'lmid', 'hmid', 'high'];
         const rows = [
             { id: 'q', label: 'Q' },
@@ -412,9 +447,13 @@ class YamahaTouchRemote {
                 const onMove = (me) => {
                     if (this.activeKnob === knob.id) {
                         const delta = (startY - me.clientY) * 0.6;
-                        let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
+                        const val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
                         this.updateKnobUI(knob, val);
-                        this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: val });
+                        if (knob.id === 'enc-att') {
+                            this.send('setAtt', { channel: this.selectedChannel, value: val });
+                        } else {
+                            this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: val });
+                        }
                     }
                 };
                 const onUp = () => { knob.releasePointerCapture(e.pointerId); this.activeKnob = null; knob.removeEventListener('pointermove', onMove); };
@@ -432,10 +471,27 @@ class YamahaTouchRemote {
                 const newVal = Math.max(0, Math.min(127, currentVal + step));
                 if (newVal !== currentVal) {
                     this.updateKnobUI(knob, newVal);
-                    this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: newVal });
+                    if (knob.id === 'enc-att') {
+                        this.send('setAtt', { channel: this.selectedChannel, value: newVal });
+                    } else {
+                        this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: newVal });
+                    }
                 }
             }
         }, { passive: false });
+
+        // EQ Type Button Clicks
+        document.getElementById('eq-area').addEventListener('click', (e) => {
+            const btn = e.target.closest('.eq-type-btn');
+            if (btn) {
+                const type = parseInt(btn.dataset.type);
+                this.send('setEQType', { channel: this.selectedChannel, value: type });
+                // Optimistic Local
+                const ch = (this.selectedChannel === 'master') ? this.state.master : this.state.channels[this.selectedChannel - 1];
+                if (ch) ch.eqType = type;
+                this.syncEQToSelected();
+            }
+        });
     }
 
     selectChannel(ch) {
@@ -536,10 +592,14 @@ class YamahaTouchRemote {
                 if (val === 64) valEl.innerText = `CENTER${hexLabelPan}`;
                 else if (val < 64) valEl.innerText = `L${64 - val}${hexLabelPan}`;
                 else valEl.innerText = `R${val - 64}${hexLabelPan}`;
+            } else if (knobEl.id === 'enc-att') {
+                // ATTENUATION: -96 to +12
+                const dB = ((val / 127) * 108 - 96).toFixed(1);
+                valEl.innerText = (dB > 0 ? '+' : '') + dB + ' dB' + hexLabel;
             } else if (isEQ) {
                 let display = hex;
                 if (param === 'gain') {
-                    if (val === 0 || forceOff) display = 'OFF';
+                    if ((band === 'low' || band === 'high') && (val === 0 || forceOff)) display = 'OFF';
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';
@@ -551,7 +611,7 @@ class YamahaTouchRemote {
                     if (band === 'low' && val === 0) display = 'HPF';
                     else if (band === 'low' && val === 127) display = 'L.SHLF';
                     else if (band === 'high' && val === 127) display = 'H.SHLF';
-                    else if (band === 'high' && val === 0) display = 'LPF';
+                    else if (band === 'high' && val === 0) display = 'HPF';
                     else {
                         // Q Mapping: val=1 -> 10.0, val=126 -> 0.10
                         const qValRaw = 10 - ((val - 1) / 125) * 9.9;
@@ -746,17 +806,31 @@ class YamahaTouchRemote {
 
     syncEQToSelected() {
         const ch = this.selectedChannel;
-        const chObj = this.state.channels[ch - 1];
-        if (!chObj) return;
-        const eqState = chObj.eq;
+        const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+        if (!chObj || !chObj.eq) return;
+
         ['low', 'lmid', 'hmid', 'high'].forEach(band => {
             ['q', 'freq', 'gain'].forEach(param => {
                 const knobId = `enc-${band}-${param}`;
                 if (this.activeKnob !== knobId) {
                     const knob = document.getElementById(knobId);
-                    this.updateKnobUI(knob, eqState[band][param]);
+                    this.updateKnobUI(knob, chObj.eq[band][param]);
                 }
             });
+        });
+
+        // ATT
+        const attKnob = document.getElementById('enc-att');
+        if (attKnob && this.activeKnob !== 'enc-att') {
+            this.updateKnobUI(attKnob, chObj.att || 0);
+        }
+
+        // EQ TYPE
+        document.querySelectorAll('.eq-type-btn').forEach(btn => {
+            const isSelected = parseInt(btn.dataset.type) === (chObj.eqType || 0);
+            btn.style.background = isSelected ? 'var(--accent)' : '#222';
+            btn.style.color = isSelected ? '#000' : '#666';
+            btn.style.borderColor = isSelected ? 'var(--accent)' : '#333';
         });
     }
 

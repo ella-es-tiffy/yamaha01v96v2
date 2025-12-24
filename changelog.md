@@ -1,6 +1,15 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.83d] - 2024-12-24
+## [v0.84d] - 2024-12-24
+### Added
+- **EQ Section**: Implemented "ATT" (Attenuation) encoder with -96dB to +12dB range mapping.
+- **EQ Section**: Added "TYPE 1" and "TYPE 2" buttons for global EQ algorithm selection.
+### Changed
+- **EQ Section**: Refined band labels. Middle bands are now labeled "MID-LOW" and "MID-HIGH".
+- **EQ Section**: High band Q=0 is now labeled "HPF" as requested.
+- **EQ Section**: Fixed "OFF" logic to strictly apply to Low and High bands, keeping Mid-LOW/HIGH gains active at all times.
+
+## [v0.83d] - 2024-12-24 (Previous)
 ### Changed
 - **EQ Section**: Refined Filter-Gain interaction. When Low (HPF) or High (LPF) bands are in filter mode, the Gain knob now correctly snaps to "OFF" and forces the UI encoder to the minimum position to match hardware logic.
 

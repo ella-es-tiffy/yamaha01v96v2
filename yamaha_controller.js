@@ -440,13 +440,31 @@ class Yamaha01V96Controller {
 
     setEQOn(channel, isOn) {
         if (!this.connected) return;
-        const chIdx = parseInt(channel) - 1;
+        const chIdx = (channel === 'master') ? 56 : (parseInt(channel) - 1);
 
         const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x0F, chIdx, 0x00, 0x00, 0x00, isOn ? 1 : 0, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
 
         console.log(`🔌 EQ ON/OFF ${channel} -> ${isOn}`);
+    }
+
+    setAttenuation(channel, value) {
+        if (!this.connected) return;
+        const chIdx = (channel === 'master') ? 56 : (parseInt(channel) - 1);
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x12, 0x00, chIdx, 0x00, 0x00, 0x00, value, 0xF7];
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
+        console.log(`📉 Attenuation ${channel} -> ${value}`);
+    }
+
+    setEQType(channel, type) {
+        if (!this.connected) return;
+        const chIdx = (channel === 'master') ? 56 : (parseInt(channel) - 1);
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x0E, chIdx, 0x00, 0x00, 0x00, type, 0xF7];
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
+        console.log(`🎚️ EQ Type ${channel} -> ${type}`);
     }
 
     setSelectedChannel(channel) {

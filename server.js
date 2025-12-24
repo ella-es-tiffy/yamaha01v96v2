@@ -42,6 +42,8 @@ wss.on('connection', (ws) => {
             // --- NEW EQ HANDLER ---
             else if (data.type === 'setEQ') yamaha.setEQ(data.channel, data.band, data.param, data.value);
             else if (data.type === 'setEQOn') yamaha.setEQOn(data.channel, data.value);
+            else if (data.type === 'setAtt') yamaha.setAttenuation(data.channel, data.value);
+            else if (data.type === 'setEQType') yamaha.setEQType(data.channel, data.value);
             else if (data.type === 'setSelectChannel') yamaha.setSelectedChannel(data.channel);
             else if (data.type === 'setMeterInterval') yamaha.setMeterInterval(data.value, data.range);
             else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
