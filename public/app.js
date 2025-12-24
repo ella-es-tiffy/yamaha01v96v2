@@ -158,7 +158,8 @@ class YamahaTouchRemote {
                 </div>
             </div>
             <div style="display: flex; gap: 5px; flex-direction: column;">
-                <div class="row-label" style="font-size: 0.5rem; color: #666; margin-bottom: 2px;">EQ TYPE</div>
+                <span class="version"
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.95d</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
@@ -450,490 +451,490 @@ class YamahaTouchRemote {
                         const delta = (startY - me.clientY) * 0.6;
                         let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
 
-                        // --- TOGGLE LOGIC: Jump from OFF to ON (+18dB) if interacting with snapped gain ---
-                        if (knob.dataset.param === 'gain') {
-                            const band = knob.dataset.band;
-                            const ch = this.selectedChannel;
-                            const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
-
-                            // HPF BINARY SWITCH LOGIC (Q=0)
-                            if (band === 'low' && chObj && chObj.eq[band] && chObj.eq[band].q === 0) {
-                                // Directional Toggle: Only toggle if moving in the 'other' direction
-                                if (startVal < 64) {
-                                    // Currently OFF: Only toggle ON if moving UP
-                                    val = (delta > 0) ? 127 : 0;
-                                } else {
-                                    // Currently ON: Only toggle OFF if moving DOWN
-                                    val = (delta < 0) ? 0 : 127;
-                                }
-                            }
-                        }
-
-                        this.updateKnobUI(knob, val);
-                        if (knob.id === 'enc-att') {
-                            this.send('setAtt', { channel: this.selectedChannel, value: val });
-                        } else {
-                            this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: val });
-
-                            // --- RESTORE LOGIC: If we just moved Q out of 0, restore gain ---
-                            if (knob.dataset.param === 'q' && val > 0 && startVal === 0) {
-                                const band = knob.dataset.band;
-                                const key = `${this.selectedChannel}-${band}`;
-                                if (this.storedGains[key] !== undefined) {
-                                    const oldGain = this.storedGains[key];
-                                    const gainKnob = document.getElementById(`enc-${band}-gain`);
-                                    if (gainKnob) {
-                                        this.updateKnobUI(gainKnob, oldGain);
-                                        this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: oldGain });
-                                    }
-                                }
-                            }
-                            // Store original gain if we enter Q=0, AND FORCE GAIN TO 0
-                            if (knob.dataset.param === 'q' && val === 0 && startVal > 0) {
-                                const band = knob.dataset.band;
-                                const ch = this.selectedChannel;
-                                const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
-                                if (chObj) this.storedGains[`${ch}-${band}`] = chObj.eq[band].gain;
-
-                                // Explicitly force Gain to 0
-                                const gainKnob = document.getElementById(`enc-${band}-gain`);
-                                if (gainKnob) {
-                                    this.updateKnobUI(gainKnob, 0);
-                                    this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: 0 });
-                                }
-                            }
-                            // --- OPTIMISTIC STATE UPDATE ---
-                            // We must update the local state immediately so subsequent checks (like the toggle logic loop)
-                            // see the new value even before the server echoes it back.
-                            if (knob.id !== 'enc-att') {
-                                const band = knob.dataset.band;
-                                const param = knob.dataset.param;
-                                const ch = this.selectedChannel;
-                                const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
-                                if (chObj && chObj.eq[band]) {
-                                    chObj.eq[band][param] = val;
-                                }
+                        // HPF BINARY SWITCH LOGIC (Q=0)
+                        if (band === 'low' && chObj && chObj.eq[band] && chObj.eq[band].q === 0) {
+                            // Directional Toggle: Only toggle if moving in the 'other' direction
+                            if (startVal < 64) {
+                                // Currently OFF: Only toggle ON if moving UP
+                                val = (delta > 0) ? 127 : 0;
+                            } else {
+                                // Currently ON: Only toggle OFF if moving DOWN
+                                val = (delta < 0) ? 0 : 127;
                             }
                         }
                     }
-                };
-                const onUp = () => { knob.releasePointerCapture(e.pointerId); this.activeKnob = null; knob.removeEventListener('pointermove', onMove); };
-                knob.addEventListener('pointermove', onMove);
-                knob.addEventListener('pointerup', onUp, { once: true });
-            }
+
+                    this.handleEQChange(knob, val, startVal);
+                }
+            };
+            const onUp = () => { knob.releasePointerCapture(e.pointerId); this.activeKnob = null; knob.removeEventListener('pointermove', onMove); };
+            knob.addEventListener('pointermove', onMove);
+            knob.addEventListener('pointerup', onUp, { once: true });
+        }
         });
 
         document.getElementById('eq-area').addEventListener('wheel', (e) => {
-            const knob = e.target.closest('.knob-svg');
-            if (knob) {
-                e.preventDefault();
-                const currentVal = this.getKnobMIDI(knob);
-                let step = e.deltaY < 0 ? 3 : -3;
-                let newVal = Math.max(0, Math.min(127, currentVal + step));
+    const knob = e.target.closest('.knob-svg');
+    if (knob) {
+        e.preventDefault();
+        const currentVal = this.getKnobMIDI(knob);
+        let step = e.deltaY < 0 ? 3 : -3;
+        let newVal = Math.max(0, Math.min(127, currentVal + step));
 
-                // HPF BINARY SWITCH LOGIC for Wheel
-                if (knob.dataset.param === 'gain' && knob.dataset.band === 'low') {
-                    const ch = this.selectedChannel;
-                    const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
-                    if (chObj && chObj.eq.low.q === 0) {
-                        const current = this.getKnobMIDI(knob);
-                        newVal = (current < 64) ? 127 : 0;
-                    }
-                }
-
-                if (newVal !== currentVal) {
-                    this.updateKnobUI(knob, newVal);
-                    if (knob.id === 'enc-att') {
-                        this.send('setAtt', { channel: this.selectedChannel, value: newVal });
-                    } else {
-                        this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: newVal });
-                    }
-                }
-            }
-        }, { passive: false });
-
-        // EQ Type Button Clicks
-        document.getElementById('eq-area').addEventListener('click', (e) => {
-            const btn = e.target.closest('.eq-type-btn');
-            if (btn) {
-                const type = parseInt(btn.dataset.type);
-                this.send('setEQType', { channel: this.selectedChannel, value: type });
-                // Optimistic Local
-                const ch = (this.selectedChannel === 'master') ? this.state.master : this.state.channels[this.selectedChannel - 1];
-                if (ch) ch.eqType = type;
-                this.syncEQToSelected();
-            }
-        });
+        // Pass currentVal as 'startVal' context for directional logic
+        this.handleEQChange(knob, newVal, currentVal);
     }
+}, { passive: false });
 
-    selectChannel(ch) {
-        this.selectedChannel = (ch === 'master') ? 'master' : parseInt(ch);
-        console.log(`🔵 Selected: ${this.selectedChannel}`);
-
-        this.send('setSelectChannel', { channel: ch });
-
-        this.renderMixer();
-        this.renderEQ();
-        this.updateSelectionUI();
+// EQ Type Button Clicks
+document.getElementById('eq-area').addEventListener('click', (e) => {
+    const btn = e.target.closest('.eq-type-btn');
+    if (btn) {
+        const type = parseInt(btn.dataset.type);
+        this.send('setEQType', { channel: this.selectedChannel, value: type });
+        // Optimistic Local
+        const ch = (this.selectedChannel === 'master') ? this.state.master : this.state.channels[this.selectedChannel - 1];
+        if (ch) ch.eqType = type;
         this.syncEQToSelected();
     }
-
-    updateSelectionUI() {
-        document.querySelectorAll('.channel-strip').forEach(s => s.classList.remove('selected'));
-        const active = document.getElementById(`strip-${this.selectedChannel}`);
-        if (active) active.classList.add('selected');
-
-        document.querySelectorAll('.sel-button').forEach(b => b.classList.remove('active'));
-        const activeBtn = document.getElementById(`sel-${this.selectedChannel}`);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        const label = document.getElementById('sel-ch-label');
-        if (label) label.innerText = this.selectedChannel;
+});
     }
 
-    updateKnobAddresses() {
-        const ch = this.selectedChannel;
-        if (ch === 'master') return; // Master has no EQ
+selectChannel(ch) {
+    this.selectedChannel = (ch === 'master') ? 'master' : parseInt(ch);
+    console.log(`🔵 Selected: ${this.selectedChannel}`);
 
-        const isUpper = ch > 24;
-        const statusMap = { low: 0xB2, lmid: 0xB4, hmid: 0xB6, high: 0xB8 };
-        const baseCCMap = { gain: 0x21, freq: 0x40, q: 0x59 };
+    this.send('setSelectChannel', { channel: ch });
 
-        ['low', 'lmid', 'hmid', 'high'].forEach(band => {
-            ['q', 'freq', 'gain'].forEach(param => {
-                const id = `enc-${band}-${param}`;
-                const addrEl = document.getElementById(`addr-${id}`);
-                if (addrEl) {
-                    const status = (statusMap[band] + (isUpper ? 1 : 0)).toString(16).toUpperCase();
-                    const cc = (baseCCMap[param] + ((ch - 1) % 24)).toString(16).toUpperCase().padStart(2, '0');
-                    if (param === 'gain') {
-                        const extraCC = (((ch - 1) % 24) + 1).toString(16).toUpperCase().padStart(2, '0');
-                        addrEl.innerHTML = `<span style="opacity:0.4;">${status} ${extraCC}</span><br>${status} ${cc}`;
-                    } else {
-                        addrEl.innerText = `${status} ${cc}`;
-                    }
-                }
-            });
-        });
-    }
+    this.renderMixer();
+    this.renderEQ();
+    this.updateSelectionUI();
+    this.syncEQToSelected();
+}
 
-    updateKnobUI(knobEl, midiVal) {
-        if (!knobEl) return;
+updateSelectionUI() {
+    document.querySelectorAll('.channel-strip').forEach(s => s.classList.remove('selected'));
+    const active = document.getElementById(`strip-${this.selectedChannel}`);
+    if (active) active.classList.add('selected');
 
-        let val = (midiVal === undefined || isNaN(midiVal)) ? 64 : midiVal;
-        const hex = val.toString(16).toUpperCase().padStart(2, '0');
-        const parts = knobEl.id.split('-');
-        const isEQ = knobEl.id.startsWith('enc-');
-        const band = isEQ ? parts[1] : null;
-        const param = isEQ ? parts[2] : null;
+    document.querySelectorAll('.sel-button').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.getElementById(`sel-${this.selectedChannel}`);
+    if (activeBtn) activeBtn.classList.add('active');
 
-        // --- FILTER OVERRIDE LOGIC (Optisch wie gewünscht) ---
-        let visualVal = val;
-        let forceOff = false;
+    const label = document.getElementById('sel-ch-label');
+    if (label) label.innerText = this.selectedChannel;
+}
 
-        if (isEQ && param === 'gain') {
-            const ch = this.selectedChannel;
-            const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
-            if (chObj && chObj.eq[band]) {
-                const qVal = chObj.eq[band].q;
-                // --- HPF BINARY VISUAL SNAP ---
-                if (band === 'low' && qVal === 0) {
-                    forceOff = (val < 64);
-                    visualVal = forceOff ? 0 : 127; // Snap to far left or far right
-                }
-            }
-        }
+updateKnobAddresses() {
+    const ch = this.selectedChannel;
+    if (ch === 'master') return; // Master has no EQ
 
-        const deg = ((visualVal / 127) * 260) - 130;
-        const indicator = knobEl.querySelector('.knob-indicator');
-        if (indicator) indicator.setAttribute('transform', `rotate(${deg}, 30, 30)`);
+    const isUpper = ch > 24;
+    const statusMap = { low: 0xB2, lmid: 0xB4, hmid: 0xB6, high: 0xB8 };
+    const baseCCMap = { gain: 0x21, freq: 0x40, q: 0x59 };
 
-        const ring = document.getElementById('ring-' + knobEl.id);
-        if (ring) {
-            const offset = 120 - ((visualVal / 127) * 120);
-            ring.setAttribute('stroke-dashoffset', offset);
-        }
-
-        knobEl.dataset.midi = val;
-        const valEl = document.getElementById('val-' + knobEl.id);
-        if (valEl) {
-            const hexLabel = this.debugUI ? ` [${hex}]` : '';
-            if (knobEl.id.startsWith('pan-')) {
-                const hexLabelPan = this.debugUI ? ` (${hex})` : '';
-                if (val === 64) valEl.innerText = `CENTER${hexLabelPan}`;
-                else if (val < 64) valEl.innerText = `L${64 - val}${hexLabelPan}`;
-                else valEl.innerText = `R${val - 64}${hexLabelPan}`;
-            } else if (knobEl.id === 'enc-att') {
-                // ATTENUATION: -96 to +12
-                const dB = ((val / 127) * 108 - 96).toFixed(1);
-                valEl.innerText = (dB > 0 ? '+' : '') + dB + ' dB' + hexLabel;
-            } else if (isEQ) {
-                let display = hex;
+    ['low', 'lmid', 'hmid', 'high'].forEach(band => {
+        ['q', 'freq', 'gain'].forEach(param => {
+            const id = `enc-${band}-${param}`;
+            const addrEl = document.getElementById(`addr-${id}`);
+            if (addrEl) {
+                const status = (statusMap[band] + (isUpper ? 1 : 0)).toString(16).toUpperCase();
+                const cc = (baseCCMap[param] + ((ch - 1) % 24)).toString(16).toUpperCase().padStart(2, '0');
                 if (param === 'gain') {
-                    if (band === 'low' && forceOff) display = 'OFF';
-                    else if (band === 'low' && !forceOff && val === 127) display = '+18.0 dB'; // HPF 'ON'
-                    else {
-                        const dB = ((val / 127) * 36 - 18).toFixed(1);
-                        display = (dB > 0 ? '+' : '') + dB + ' dB';
-                    }
-                } else if (param === 'freq') {
-                    const freq = 21.2 * Math.pow(20000 / 21.2, val / 127);
-                    display = freq >= 1000 ? (freq / 1000).toFixed(2) + ' kHz' : Math.round(freq) + ' Hz';
-                } else if (param === 'q') {
-                    if (band === 'low' && val === 0) display = 'HPF';
-                    else if (band === 'low' && val === 127) display = 'L.SHLF';
-                    else if (band === 'high' && val === 127) display = 'H.SHLF';
-                    else if (band === 'high' && val === 0) display = 'LPF';
-                    else {
-                        // Q Mapping: val=1 -> 10.0, val=126 -> 0.10
-                        const qValRaw = 10 - ((val - 1) / 125) * 9.9;
-                        display = Math.max(0.1, Math.min(10, qValRaw)).toFixed(2);
-                    }
+                    const extraCC = (((ch - 1) % 24) + 1).toString(16).toUpperCase().padStart(2, '0');
+                    addrEl.innerHTML = `<span style="opacity:0.4;">${status} ${extraCC}</span><br>${status} ${cc}`;
+                } else {
+                    addrEl.innerText = `${status} ${cc}`;
                 }
-                valEl.innerText = display + hexLabel;
-            } else {
-                valEl.innerText = hex;
+            }
+        });
+    });
+}
+
+updateKnobUI(knobEl, midiVal) {
+    if (!knobEl) return;
+
+    let val = (midiVal === undefined || isNaN(midiVal)) ? 64 : midiVal;
+    const hex = val.toString(16).toUpperCase().padStart(2, '0');
+    const parts = knobEl.id.split('-');
+    const isEQ = knobEl.id.startsWith('enc-');
+    const band = isEQ ? parts[1] : null;
+    const param = isEQ ? parts[2] : null;
+
+    // --- FILTER OVERRIDE LOGIC (Optisch wie gewünscht) ---
+    let visualVal = val;
+    let forceOff = false;
+
+    if (isEQ && param === 'gain') {
+        const ch = this.selectedChannel;
+        const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
+        if (chObj && chObj.eq[band]) {
+            const qVal = chObj.eq[band].q;
+            // --- HPF BINARY VISUAL SNAP ---
+            if (band === 'low' && qVal === 0) {
+                forceOff = (val < 64);
+                visualVal = forceOff ? 0 : 127; // Snap to far left or far right
             }
         }
     }
 
-    getKnobMIDI(knobEl) {
-        const val = parseInt(knobEl.dataset.midi);
-        return isNaN(val) ? 64 : val;
+    const deg = ((visualVal / 127) * 260) - 130;
+    const indicator = knobEl.querySelector('.knob-indicator');
+    if (indicator) indicator.setAttribute('transform', `rotate(${deg}, 30, 30)`);
+
+    const ring = document.getElementById('ring-' + knobEl.id);
+    if (ring) {
+        const offset = 120 - ((visualVal / 127) * 120);
+        ring.setAttribute('stroke-dashoffset', offset);
     }
 
-    updatePanUI(id, value) {
-        const knob = document.getElementById(`pan-${id}`);
-        if (knob) this.updateKnobUI(knob, value);
-    }
-
-    updateFaderUI(id, value) {
-        const thumb = document.getElementById(`thumb-${id}`);
-        if (!thumb) return;
-        const container = thumb.closest('.fader-area');
-        const availableHeight = container.clientHeight - 64;
-        thumb.style.top = `${Math.max(0, Math.min(availableHeight, (1 - (value / 1023)) * availableHeight))}px`;
-        const valText = document.getElementById(`val-${id}`);
-        if (valText) valText.innerText = value;
-    }
-
-    updateMuteUI(ch, isMuted) {
-        const btn = document.getElementById(`btn-${ch}`);
-        if (!btn) return;
-        btn.classList.toggle('muted', isMuted);
-        btn.classList.toggle('active', !isMuted);
-        btn.innerText = isMuted ? 'MUTE' : 'ON';
-    }
-
-    connect() {
-        this.socket = new WebSocket(this.wsUrl);
-        this.socket.onopen = () => {
-            document.getElementById('status').innerText = 'Verbunden';
-            document.getElementById('status').style.color = '#34c759';
-        };
-        this.socket.onclose = () => {
-            document.getElementById('status').innerText = 'Verbindung unterbrochen';
-            document.getElementById('status').style.color = '#ff3b30';
-            setTimeout(() => this.connect(), 5000); // Auto-reconnect
-        };
-        this.socket.onmessage = (msg) => {
-            const data = JSON.parse(msg.data);
-            if (data.type === 'midiLog') {
-                const isMeter = data.data[0] === 0xF0 && data.data[5] === 0x21;
-                if (isMeter) return; // Hide meter spam in main UI log
-
-                const hex = data.data.map(b => b.toString(16).padStart(2, '0')).join(' ');
-                const isOut = data.isOutgoing;
-
-                const logEl = document.getElementById('debug-log');
-                if (logEl && logEl.style.display !== 'none') {
-                    const entry = document.createElement('div');
-                    entry.style.fontSize = '0.65rem';
-                    entry.style.fontFamily = 'monospace';
-                    entry.style.padding = '2px 0';
-                    entry.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
-
-                    const dir = isOut ?
-                        '<span style="color:#aaa;">[OUT]</span>' :
-                        '<span style="color:#34c759;">[IN]</span>';
-
-                    entry.innerHTML = `${dir} ${hex}`;
-                    logEl.appendChild(entry);
-
-                    // Keep last 50 entries
-                    while (logEl.children.length > 50) logEl.removeChild(logEl.firstChild);
-                    logEl.scrollTop = logEl.scrollHeight;
+    knobEl.dataset.midi = val;
+    const valEl = document.getElementById('val-' + knobEl.id);
+    if (valEl) {
+        const hexLabel = this.debugUI ? ` [${hex}]` : '';
+        if (knobEl.id.startsWith('pan-')) {
+            const hexLabelPan = this.debugUI ? ` (${hex})` : '';
+            if (val === 64) valEl.innerText = `CENTER${hexLabelPan}`;
+            else if (val < 64) valEl.innerText = `L${64 - val}${hexLabelPan}`;
+            else valEl.innerText = `R${val - 64}${hexLabelPan}`;
+        } else if (knobEl.id === 'enc-att') {
+            // ATTENUATION: -96 to +12
+            const dB = ((val / 127) * 108 - 96).toFixed(1);
+            valEl.innerText = (dB > 0 ? '+' : '') + dB + ' dB' + hexLabel;
+        } else if (isEQ) {
+            let display = hex;
+            if (param === 'gain') {
+                if (band === 'low' && forceOff) display = 'OFF';
+                else if (band === 'low' && !forceOff && val === 127) display = '+18.0 dB'; // HPF 'ON'
+                else {
+                    const dB = ((val / 127) * 36 - 18).toFixed(1);
+                    display = (dB > 0 ? '+' : '') + dB + ' dB';
                 }
-            } else if (data.type === 'state') {
-                // Merge state selectively to preserve local fader values during drag
-                const newState = data.data;
-
-                // Update channels, but preserve fader value if actively dragging
-                for (let i = 0; i < 36; i++) {
-                    if (!this.state.channels[i]) continue;
-                    // Preserve fader and pan during drag
-                    const preserveFader = this.activeFader === String(i + 1);
-                    const preservePan = this.activeKnob === `pan-${i + 1}`;
-                    this.state.channels[i] = {
-                        ...newState.channels[i],
-                        fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader,
-                        pan: preservePan ? this.state.channels[i].pan : newState.channels[i].pan
-                    };
+            } else if (param === 'freq') {
+                const freq = 21.2 * Math.pow(20000 / 21.2, val / 127);
+                display = freq >= 1000 ? (freq / 1000).toFixed(2) + ' kHz' : Math.round(freq) + ' Hz';
+            } else if (param === 'q') {
+                if (band === 'low' && val === 0) display = 'HPF';
+                else if (band === 'low' && val === 127) display = 'L.SHLF';
+                else if (band === 'high' && val === 127) display = 'H.SHLF';
+                else if (band === 'high' && val === 0) display = 'LPF';
+                else {
+                    // Q Mapping: val=1 -> 10.0, val=126 -> 0.10
+                    const qValRaw = 10 - ((val - 1) / 125) * 9.9;
+                    display = Math.max(0.1, Math.min(10, qValRaw)).toFixed(2);
                 }
-
-                // Update master, preserve fader if dragging
-                const preserveMasterFader = this.activeFader === 'master';
-                this.state.master = {
-                    ...newState.master,
-                    fader: preserveMasterFader ? this.state.master.fader : newState.master.fader
-                };
-
-                // Sync UI Selection from hardware
-                if (newState.selectedChannel !== undefined && this.selectedChannel !== newState.selectedChannel) {
-                    this.selectedChannel = newState.selectedChannel;
-                    this.renderMixer();
-                    this.renderEQ();
-                }
-
-                this.syncFaders();
-                this.syncFaders();
-                this.syncEQToSelected();
-            } else if (data.type === 'eq') {
-                // Handle individual EQ parameter updates
-                // format: { channel: 1, band: 'low', param: 'q', value: 0 }
-                const d = data.data;
-                const chIdx = parseInt(d.channel) - 1;
-                if (this.state.channels[chIdx] && this.state.channels[chIdx].eq[d.band]) {
-                    this.state.channels[chIdx].eq[d.band][d.param] = d.value;
-                }
-
-                // Update UI if this is the selected channel
-                if (parseInt(d.channel) === this.selectedChannel) {
-                    const knobId = `enc-${d.band}-${d.param}`;
-                    const knob = document.getElementById(knobId);
-                    if (knob) this.updateKnobUI(knob, d.value);
-                }
-            } else if (data.type === 'meters') {
-                // Update only meters, don't touch faders
-                for (let i = 0; i < 32; i++) {
-                    if (this.state.channels[i]) {
-                        this.state.channels[i].meter = data.data.channels[i] || 0;
-                    }
-                }
-                this.state.master.meter = data.data.master || 0;
-                // Update meter UI only
-                const end = Math.min(32, this.currentBankStart + 7);
-                for (let i = this.currentBankStart; i <= end; i++) {
-                    this.updateMeterUI(i, this.state.channels[i - 1].meter);
-                }
-            } else if (data.type === 'changelog') {
-                const body = document.getElementById('changelog-body');
-                if (body) body.innerHTML = data.data;
             }
-        };
-    }
-
-    logMidi(bytes) {
-        const logEl = document.getElementById('debug-log');
-        if (!logEl || logEl.style.display === 'none') return;
-
-        const hex = bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-        const entry = document.createElement('div');
-        entry.style.borderBottom = '1px solid #111';
-        entry.style.padding = '2px 0';
-        entry.innerText = `> ${hex}`;
-
-        logEl.appendChild(entry);
-        if (logEl.childNodes.length > 100) logEl.removeChild(logEl.childNodes[1]);
-        logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    syncFaders() {
-        const end = Math.min(36, this.currentBankStart + 7);
-        for (let i = this.currentBankStart; i <= end; i++) {
-            const ch = this.state.channels[i - 1];
-            if (!ch) continue;
-            // Don't update fader if user is actively moving it
-            if (this.activeFader !== String(i)) {
-                this.updateFaderUI(i, ch.fader);
-            }
-            if (!this.activeKnob || this.activeKnob !== `pan-${i}`) {
-                this.updatePanUI(i, ch.pan || 64);
-            }
-            this.updateMuteUI(i, ch.mute);
-            this.updateMeterUI(i, ch.meter);
-            this.updateNameUI(i, ch.name);
-        }
-        if (this.activeFader !== 'master') {
-            this.updateFaderUI('master', this.state.master.fader);
-        }
-        this.updateMuteUI('master', this.state.master.mute);
-    }
-
-    updateNameUI(ch, name) {
-        const el = document.getElementById(`name-box-${ch}`);
-        if (el && name) el.innerText = name;
-    }
-
-    updateMeterUI(ch, val) {
-        // val comes as 7-bit (0-127)
-        // APPLY OFFSET (Noise Gate/Floor)
-        // meterOffset is 0-100. We map it to 0-127 range.
-        const gateThreshold = Math.round((this.meterOffset / 100) * 80);
-        const displayVal = val < gateThreshold ? 0 : val;
-
-        const el = document.getElementById(`meter-${ch}`);
-        if (el) {
-            // Scaling: 01V meters often peak early in MIDI. Let's use 60 as full scale.
-            const pct = Math.min(100, (displayVal / 60) * 100);
-            el.style.height = `${pct}%`;
-
-            // Color grading (based on percentage)
-            if (pct > 90) el.style.background = '#ff3b30'; // Clip
-            else if (pct > 70) el.style.background = '#ffcc00'; // Warning
-            else el.style.background = '#34c759'; // Normal
+            valEl.innerText = display + hexLabel;
+        } else {
+            valEl.innerText = hex;
         }
     }
+}
 
-    syncEQToSelected() {
+getKnobMIDI(knobEl) {
+    const val = parseInt(knobEl.dataset.midi);
+    return isNaN(val) ? 64 : val;
+}
+
+updatePanUI(id, value) {
+    const knob = document.getElementById(`pan-${id}`);
+    if (knob) this.updateKnobUI(knob, value);
+}
+
+updateFaderUI(id, value) {
+    const thumb = document.getElementById(`thumb-${id}`);
+    if (!thumb) return;
+    const container = thumb.closest('.fader-area');
+    const availableHeight = container.clientHeight - 64;
+    thumb.style.top = `${Math.max(0, Math.min(availableHeight, (1 - (value / 1023)) * availableHeight))}px`;
+    const valText = document.getElementById(`val-${id}`);
+    if (valText) valText.innerText = value;
+}
+
+updateMuteUI(ch, isMuted) {
+    const btn = document.getElementById(`btn-${ch}`);
+    if (!btn) return;
+    btn.classList.toggle('muted', isMuted);
+    btn.classList.toggle('active', !isMuted);
+    btn.innerText = isMuted ? 'MUTE' : 'ON';
+}
+
+// Centralized Logic Handler
+handleEQChange(knob, newVal, previousValContext) {
+    // Apply Directional Toggle Logic for Low Band Gain HPF
+    if (knob.dataset.param === 'gain') {
+        const band = knob.dataset.band;
         const ch = this.selectedChannel;
         const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
-        if (!chObj || !chObj.eq) return;
+        if (band === 'low' && chObj && chObj.eq.low.q === 0) {
+            // Directional Toggle
+            const delta = newVal - previousValContext;
+            if (previousValContext < 64) newVal = (delta > 0) ? 127 : 0;
+            else newVal = (delta < 0) ? 0 : 127;
+        }
+    }
 
-        ['low', 'lmid', 'hmid', 'high'].forEach(band => {
-            ['q', 'freq', 'gain'].forEach(param => {
-                const knobId = `enc-${band}-${param}`;
-                if (this.activeKnob !== knobId) {
-                    const knob = document.getElementById(knobId);
-                    this.updateKnobUI(knob, chObj.eq[band][param]);
+    // Apply UI & Send
+    this.updateKnobUI(knob, newVal);
+    if (knob.id === 'enc-att') {
+        this.send('setAtt', { channel: this.selectedChannel, value: newVal });
+    } else {
+        const band = knob.dataset.band;
+        const param = knob.dataset.param;
+        const ch = this.selectedChannel;
+        const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+
+        // STATE-BASED TRANSITION LOGIC for SAVE/RESTORE
+        if (param === 'q' && chObj && chObj.eq[band]) {
+            const prevQ = chObj.eq[band].q; // Read from STATE, not UI
+
+            // RESTORE: Crossing from 0 to >0
+            if (prevQ === 0 && newVal > 0) {
+                const key = `${this.selectedChannel}-${band}`;
+                if (this.storedGains[key] !== undefined) {
+                    const oldGain = this.storedGains[key];
+                    const gainKnob = document.getElementById(`enc-${band}-gain`);
+                    if (gainKnob) {
+                        this.updateKnobUI(gainKnob, oldGain);
+                        this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: oldGain });
+                        // Update optimistic state for gain too
+                        if (chObj.eq[band]) chObj.eq[band].gain = oldGain;
+                    }
                 }
-            });
-        });
+            }
 
-        // ATT
-        const attKnob = document.getElementById('enc-att');
-        if (attKnob && this.activeKnob !== 'enc-att') {
-            this.updateKnobUI(attKnob, chObj.att || 0);
+            // SAVE & FORCE OFF: Crossing from >0 to 0
+            if (prevQ > 0 && newVal === 0) {
+                this.storedGains[`${ch}-${band}`] = chObj.eq[band].gain;
+
+                const gainKnob = document.getElementById(`enc-${band}-gain`);
+                if (gainKnob) {
+                    this.updateKnobUI(gainKnob, 0);
+                    this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: 0 });
+                    // Update optimistic state for gain too
+                    if (chObj.eq[band]) chObj.eq[band].gain = 0;
+                }
+            }
         }
 
-        // EQ TYPE
-        document.querySelectorAll('.eq-type-btn').forEach(btn => {
-            const isSelected = parseInt(btn.dataset.type) === (chObj.eqType || 0);
-            btn.style.background = isSelected ? 'var(--accent)' : '#222';
-            btn.style.color = isSelected ? '#000' : '#666';
-            btn.style.borderColor = isSelected ? 'var(--accent)' : '#333';
+        this.send('setEQ', { channel: this.selectedChannel, band: band, param: param, value: newVal });
+
+        // Optimistic State Update
+        if (chObj && chObj.eq[band]) {
+            chObj.eq[band][param] = newVal;
+        }
+    }
+}
+
+connect() {
+    this.socket = new WebSocket(this.wsUrl);
+    this.socket.onopen = () => {
+        document.getElementById('status').innerText = 'Verbunden';
+        document.getElementById('status').style.color = '#34c759';
+    };
+    this.socket.onclose = () => {
+        document.getElementById('status').innerText = 'Verbindung unterbrochen';
+        document.getElementById('status').style.color = '#ff3b30';
+        setTimeout(() => this.connect(), 5000); // Auto-reconnect
+    };
+    this.socket.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (data.type === 'midiLog') {
+            const isMeter = data.data[0] === 0xF0 && data.data[5] === 0x21;
+            if (isMeter) return; // Hide meter spam in main UI log
+
+            const hex = data.data.map(b => b.toString(16).padStart(2, '0')).join(' ');
+            const isOut = data.isOutgoing;
+
+            const logEl = document.getElementById('debug-log');
+            if (logEl && logEl.style.display !== 'none') {
+                const entry = document.createElement('div');
+                entry.style.fontSize = '0.65rem';
+                entry.style.fontFamily = 'monospace';
+                entry.style.padding = '2px 0';
+                entry.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+
+                const dir = isOut ?
+                    '<span style="color:#aaa;">[OUT]</span>' :
+                    '<span style="color:#34c759;">[IN]</span>';
+
+                entry.innerHTML = `${dir} ${hex}`;
+                logEl.appendChild(entry);
+
+                // Keep last 50 entries
+                while (logEl.children.length > 50) logEl.removeChild(logEl.firstChild);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        } else if (data.type === 'state') {
+            // Merge state selectively to preserve local fader values during drag
+            const newState = data.data;
+
+            // Update channels, but preserve fader value if actively dragging
+            for (let i = 0; i < 36; i++) {
+                if (!this.state.channels[i]) continue;
+                // Preserve fader and pan during drag
+                const preserveFader = this.activeFader === String(i + 1);
+                const preservePan = this.activeKnob === `pan-${i + 1}`;
+                this.state.channels[i] = {
+                    ...newState.channels[i],
+                    fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader,
+                    pan: preservePan ? this.state.channels[i].pan : newState.channels[i].pan
+                };
+            }
+
+            // Update master, preserve fader if dragging
+            const preserveMasterFader = this.activeFader === 'master';
+            this.state.master = {
+                ...newState.master,
+                fader: preserveMasterFader ? this.state.master.fader : newState.master.fader
+            };
+
+            // Sync UI Selection from hardware
+            if (newState.selectedChannel !== undefined && this.selectedChannel !== newState.selectedChannel) {
+                this.selectedChannel = newState.selectedChannel;
+                this.renderMixer();
+                this.renderEQ();
+            }
+
+            this.syncFaders();
+            this.syncFaders();
+            this.syncEQToSelected();
+        } else if (data.type === 'eq') {
+            // Handle individual EQ parameter updates
+            // format: { channel: 1, band: 'low', param: 'q', value: 0 }
+            const d = data.data;
+            const chIdx = parseInt(d.channel) - 1;
+            if (this.state.channels[chIdx] && this.state.channels[chIdx].eq[d.band]) {
+                this.state.channels[chIdx].eq[d.band][d.param] = d.value;
+            }
+
+            // Update UI if this is the selected channel
+            if (parseInt(d.channel) === this.selectedChannel) {
+                const knobId = `enc-${d.band}-${d.param}`;
+                const knob = document.getElementById(knobId);
+                if (knob) this.updateKnobUI(knob, d.value);
+            }
+        } else if (data.type === 'meters') {
+            // Update only meters, don't touch faders
+            for (let i = 0; i < 32; i++) {
+                if (this.state.channels[i]) {
+                    this.state.channels[i].meter = data.data.channels[i] || 0;
+                }
+            }
+            this.state.master.meter = data.data.master || 0;
+            // Update meter UI only
+            const end = Math.min(32, this.currentBankStart + 7);
+            for (let i = this.currentBankStart; i <= end; i++) {
+                this.updateMeterUI(i, this.state.channels[i - 1].meter);
+            }
+        } else if (data.type === 'changelog') {
+            const body = document.getElementById('changelog-body');
+            if (body) body.innerHTML = data.data;
+        }
+    };
+}
+
+logMidi(bytes) {
+    const logEl = document.getElementById('debug-log');
+    if (!logEl || logEl.style.display === 'none') return;
+
+    const hex = bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    const entry = document.createElement('div');
+    entry.style.borderBottom = '1px solid #111';
+    entry.style.padding = '2px 0';
+    entry.innerText = `> ${hex}`;
+
+    logEl.appendChild(entry);
+    if (logEl.childNodes.length > 100) logEl.removeChild(logEl.childNodes[1]);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+syncFaders() {
+    const end = Math.min(36, this.currentBankStart + 7);
+    for (let i = this.currentBankStart; i <= end; i++) {
+        const ch = this.state.channels[i - 1];
+        if (!ch) continue;
+        // Don't update fader if user is actively moving it
+        if (this.activeFader !== String(i)) {
+            this.updateFaderUI(i, ch.fader);
+        }
+        if (!this.activeKnob || this.activeKnob !== `pan-${i}`) {
+            this.updatePanUI(i, ch.pan || 64);
+        }
+        this.updateMuteUI(i, ch.mute);
+        this.updateMeterUI(i, ch.meter);
+        this.updateNameUI(i, ch.name);
+    }
+    if (this.activeFader !== 'master') {
+        this.updateFaderUI('master', this.state.master.fader);
+    }
+    this.updateMuteUI('master', this.state.master.mute);
+}
+
+updateNameUI(ch, name) {
+    const el = document.getElementById(`name-box-${ch}`);
+    if (el && name) el.innerText = name;
+}
+
+updateMeterUI(ch, val) {
+    // val comes as 7-bit (0-127)
+    // APPLY OFFSET (Noise Gate/Floor)
+    // meterOffset is 0-100. We map it to 0-127 range.
+    const gateThreshold = Math.round((this.meterOffset / 100) * 80);
+    const displayVal = val < gateThreshold ? 0 : val;
+
+    const el = document.getElementById(`meter-${ch}`);
+    if (el) {
+        // Scaling: 01V meters often peak early in MIDI. Let's use 60 as full scale.
+        const pct = Math.min(100, (displayVal / 60) * 100);
+        el.style.height = `${pct}%`;
+
+        // Color grading (based on percentage)
+        if (pct > 90) el.style.background = '#ff3b30'; // Clip
+        else if (pct > 70) el.style.background = '#ffcc00'; // Warning
+        else el.style.background = '#34c759'; // Normal
+    }
+}
+
+syncEQToSelected() {
+    const ch = this.selectedChannel;
+    const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+    if (!chObj || !chObj.eq) return;
+
+    ['low', 'lmid', 'hmid', 'high'].forEach(band => {
+        ['q', 'freq', 'gain'].forEach(param => {
+            const knobId = `enc-${band}-${param}`;
+            if (this.activeKnob !== knobId) {
+                const knob = document.getElementById(knobId);
+                this.updateKnobUI(knob, chObj.eq[band][param]);
+            }
         });
+    });
+
+    // ATT
+    const attKnob = document.getElementById('enc-att');
+    if (attKnob && this.activeKnob !== 'enc-att') {
+        this.updateKnobUI(attKnob, chObj.att || 0);
     }
 
-    triggerMeterSync() {
-        const start = this.meterBankOnly ? (this.currentBankStart - 1) : 0;
-        const count = this.meterBankOnly ? 8 : 32;
-        console.log(`📡 Meter Range Update: ${start} - ${start + count}`);
-        this.send('setMeterInterval', { range: { start, count } });
-    }
+    // EQ TYPE
+    document.querySelectorAll('.eq-type-btn').forEach(btn => {
+        const isSelected = parseInt(btn.dataset.type) === (chObj.eqType || 0);
+        btn.style.background = isSelected ? 'var(--accent)' : '#222';
+        btn.style.color = isSelected ? '#000' : '#666';
+        btn.style.borderColor = isSelected ? 'var(--accent)' : '#333';
+    });
+}
 
-    send(type, payload) {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type, ...payload }));
-    }
+triggerMeterSync() {
+    const start = this.meterBankOnly ? (this.currentBankStart - 1) : 0;
+    const count = this.meterBankOnly ? 8 : 32;
+    console.log(`📡 Meter Range Update: ${start} - ${start + count}`);
+    this.send('setMeterInterval', { range: { start, count } });
+}
+
+send(type, payload) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type, ...payload }));
+}
 }
 window.addEventListener('load', () => new YamahaTouchRemote());
