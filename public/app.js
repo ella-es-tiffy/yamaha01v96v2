@@ -502,6 +502,18 @@ class YamahaTouchRemote {
                                     this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: 0 });
                                 }
                             }
+                            // --- OPTIMISTIC STATE UPDATE ---
+                            // We must update the local state immediately so subsequent checks (like the toggle logic loop)
+                            // see the new value even before the server echoes it back.
+                            if (knob.id !== 'enc-att') {
+                                const band = knob.dataset.band;
+                                const param = knob.dataset.param;
+                                const ch = this.selectedChannel;
+                                const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+                                if (chObj && chObj.eq[band]) {
+                                    chObj.eq[band][param] = val;
+                                }
+                            }
                         }
                     }
                 };

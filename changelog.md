@@ -1,6 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.92d] - 2024-12-24
+## [v0.93d] - 2024-12-24
+### Fixed
+- **EQ Section**: Implemented **Optimistic State Updates** for EQ parameters. This ensures that when you change a parameter (like Q), the internal state is updated immediately.
+- **EQ Section**: This fixes the issue where the Low Gain toggle logic might "stick" to the previous Q value (e.g., behaving like HPF/Binary even after Q was changed to Shelf) because the application was waiting for the server echo before updating its logic state.
+
+## [v0.92d] - 2024-12-24 (Previous)
 ### Fixed
 - **Core UI**: Fixed a critical bug where **encoders starting at 0** were incorrectly treated as missing values and defaulted to 64 (Center), causing them to "jump" to the middle on the first touch.
 - **Core UI**: This ensures that when a value is OFF (0), it correctly stays at 0 when you start interacting with it, allowing for smooth fine adjustments from the minimum value.
