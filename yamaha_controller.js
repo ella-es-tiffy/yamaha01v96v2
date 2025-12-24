@@ -29,12 +29,21 @@ class Yamaha01V96Controller {
 
     startMetering() {
         if (this.meterInterval) clearInterval(this.meterInterval);
+
+        // KRYOPS FORMAT: F0 43 30 3E 0D 21 00 00 00 00 32 F7
+        // Send IMMEDIATELY on start, then every 10 seconds
+        const meterRequest = [0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00, 0x00, 0x00, 0x00, 32, 0xF7];
+
+        if (this.connected) {
+            this.output.sendMessage(meterRequest);
+            console.log('📊 Sent initial Remote Meter Request');
+        }
+
         this.meterInterval = setInterval(() => {
             if (this.connected) {
-                // F0 43 30 3E 0D 21 00 00 00 00 20 F7
-                this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00, 0x00, 0x00, 0x00, 0x20, 0xF7]);
+                this.output.sendMessage(meterRequest);
             }
-        }, 100);
+        }, 10000);
     }
 
     connect() {
@@ -59,7 +68,7 @@ class Yamaha01V96Controller {
 
             this.connected = true;
             setTimeout(() => this.requestInitialState(), 500);
-            this.startMetering(); // Ignite the meters!
+            this.startMetering(); // Sends immediately + sets interval
             return true;
         } catch (error) {
             console.error('Connection failed:', error.message);
@@ -98,36 +107,27 @@ class Yamaha01V96Controller {
 
     handleMidiMessage(deltaTime, message) {
         if (!message || message.length < 3) return;
+
         const status = message[0];
         const data1 = message[1];
         const data2 = message[2];
         let changed = false;
 
-        // METER DATA PARSING (F0 43 10 3E 0D 21 ...)
-        if (message.length > 20 && message[0] === 0xF0 && message[4] === 0x0D && message[5] === 0x21) {
-            // Data starts at index 9: F0 43 10 3E 0D 21 00 00 00 [VAL1] [VAL2] ...
-            // Based on log: F0 43 10 3E 0D 21 00 00 00 [17] [45] ...
-            // It seems to be 1 byte per channel? Or interleaved?
-            // The kryops repo says: outMessage.levels[i+1] = message[(9 + 2*i)]; (Every 2nd byte?)
-
-            // Let's assume standard 1-byte values initially, or the stride logic.
-            // Log showed: 17 45 17 45 17 45 01 1C ...
-            // If stride is 2, it might be Low/High bytes or Peak/Hold?
-            // Kryops logic: message[(9 + 2*i)] -> Bytes 9, 11, 13...
-
+        // METER DATA PARSING
+        // Accepts both device IDs (43 10 and 43 30)
+        // message[5] == 0x21, length >= 70
+        // Data at index 9 with stride 2
+        if (message.length >= 70 && message[0] === 0xF0 && message[1] === 0x43 && message[5] === 0x21) {
             for (let i = 0; i < 32; i++) {
-                const val = message[9 + (i * 2)]; // Try logic from repo
+                const val = message[9 + (i * 2)];
                 if (this.state.channels[i]) {
                     this.state.channels[i].meter = val || 0;
                 }
             }
-            // Master Meter? usually at the end.
             this.state.master.meter = message[9 + (32 * 2)] || 0;
-
             changed = true;
-            // Debounce state updates for meters to prevent flooding WS?
-            // For now, just let it rip.
         }
+
 
         // 1. LIVE CC HANDLING
         const bandBaseMap = {
