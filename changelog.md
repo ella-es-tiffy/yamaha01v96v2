@@ -1,5 +1,17 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.985d] - 2024-12-24 (Bugfix/Feature)
+### Fixed
+- **EQ Section Logic Restriction**: The Save/Restore/Backup logic (for Gain/HPF) is now **strictly limited to the Low Band**.
+- **Change**: `lmid`, `hmid`, and `high` bands will now behave as standard parametric bands (or standard defaults) regardless of their Q value, preventing any accidental "Gain Off" behavior or backup/restore logic from triggering on those bands.
+- **Affected Functions**: `handleEQChange` (Logic checks now require `band === 'low'`) and `syncStoredGains` (Loops only over `['low']`).
+
+## [v0.984d] - 2024-12-24 (Bugfix)
+### Fixed
+- **EQ Section**: Fixed a visual glitch where entering HPF mode from Shelf mode (Q > 0 -> 0) would momentarily show **"-18 dB"** instead of skipping directly to **"OFF"**.
+- **Fix**: The Q state is now optimistically updated to 0 *before* the Gain update trigger, ensuring the UI correctly applies the HPF logic (OFF) during the transition.
+- **UI Update**: Changed the display label for Max Gain in HPF mode from **"+18.0 dB"** to **"ON"** as requested, to clearly indicate the switch-like behavior.
+
 ## [v0.983d] - 2024-12-24 (Bugfix)
 ### Fixed
 - **EQ Section**: Fixed a visual glitch where restoring Low Gain would incorrectly snap the knob to 100% (+18dB) or 0% (OFF) despite the value being correct (e.g., 0.1dB).

@@ -159,7 +159,7 @@ class YamahaTouchRemote {
             </div>
             <div style="display: flex; gap: 5px; flex-direction: column;">
                 <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.983d</span>
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.985d</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
@@ -592,7 +592,7 @@ class YamahaTouchRemote {
                 let display = hex;
                 if (param === 'gain') {
                     if (band === 'low' && forceOff) display = 'OFF';
-                    else if (band === 'low' && !forceOff && val === 127) display = '+18.0 dB'; // HPF 'ON'
+                    else if (band === 'low' && !forceOff && val === 127) display = 'ON'; // HPF 'ON'
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';
@@ -658,10 +658,10 @@ class YamahaTouchRemote {
                 const delta = newVal - previousValContext;
                 if (previousValContext < 64) newVal = (delta > 0) ? 127 : 0;
                 else newVal = (delta < 0) ? 0 : 127;
-            } else if (chObj && (!chObj.eq[band].q === 0)) {
+            } else if (band === 'low' && chObj && (chObj.eq[band].q !== 0)) {
                 // Continuous Save: If we are modifying Gain in a "Normal" (Non-HPF) mode,
                 // update the storedGain immediately. This ensures we always have the latest value
-                // ready if we suddenly switch Q to 0.
+                // ready if we suddenly switch Q to 0. (LOW BAND ONLY)
                 this.storedGains[`${ch}-${band}`] = newVal;
             }
         }
@@ -676,13 +676,13 @@ class YamahaTouchRemote {
             const ch = this.selectedChannel;
             const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
 
-            // STATE-BASED TRANSITION LOGIC for SAVE/RESTORE
-            if (param === 'q' && chObj && chObj.eq[band]) {
+            // STATE-BASED TRANSITION LOGIC for SAVE/RESTORE (LOW BAND ONLY)
+            if (band === 'low' && param === 'q' && chObj && chObj.eq[band]) {
                 const prevQ = chObj.eq[band].q; // Read from STATE, not UI
 
                 // RESTORE: Crossing from 0 to >0
                 if (prevQ === 0 && newVal > 0) {
-                    // CRITICAL FIX: Update Q state IMMEDIATELY/EARLY.
+                    // YAMAHA 01V96 PRO TOUCH ENGINE v0.985date Q state IMMEDIATELY/EARLY.
                     // We must let `updateKnobUI` know that Q is no longer 0, otherwise it will
                     // incorrectly apply the HPF Binary Snap logic (rendering 100% or 0%)
                     // to the gain value we are about to restore.
@@ -704,6 +704,10 @@ class YamahaTouchRemote {
 
                 // SAVE & FORCE OFF: Crossing from >0 to 0
                 if (prevQ > 0 && newVal === 0) {
+                    // CRITICAL FIX: Optimistic State Update for Q here too!
+                    // Ensure UI knows we are now in HPF mode so Gain 0 renders as "OFF" not "-18dB"
+                    if (chObj.eq[band]) chObj.eq[band].q = newVal;
+
                     this.storedGains[`${ch}-${band}`] = chObj.eq[band].gain;
 
                     const gainKnob = document.getElementById(`enc-${band}-gain`);
@@ -903,7 +907,8 @@ class YamahaTouchRemote {
         // would fallback to 0 or Max because nothing was stored.
         this.state.channels.forEach((ch, idx) => {
             if (!ch) return;
-            ['low', 'lmid', 'hmid', 'high'].forEach(band => {
+            // RESTRICTED TO LOW BAND ONLY
+            ['low'].forEach(band => {
                 if (ch.eq && ch.eq[band]) {
                     // Start simple: If Q > 0, this gain is a valid 'normal' gain. Backup it.
                     if (ch.eq[band].q > 0) {
