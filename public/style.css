@@ -111,6 +111,8 @@ body {
     flex-direction: column;
     padding: 10px 10px 45px 10px;
     background: var(--bg-dark);
+    position: relative;
+    /* CRITICAL FOR OVERLAYS */
     /* OFFSET FOR ADDRESS BAR */
     touch-action: none;
     /* KILL ALL BROWSER ZOOM GESTURES */
