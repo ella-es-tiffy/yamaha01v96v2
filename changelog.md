@@ -1,6 +1,12 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.93d] - 2024-12-24
+## [v0.94d] - 2024-12-24
+### Fixed
+- **WebSocket Sync**: Added a dedicated `data.type === 'eq'` handler in the frontend WebSocket listener.
+- **Why?**: Previously, individual EQ parameter updates from the server refreshed the UI knobs but **failed to update the internal state object**. This caused logic dependent on state (like the Low Gain HPF toggle check `if (state.eq.low.q === 0)`) to read stale data, leading to incorrect behavior (e.g., gain acting binary even after Q was changed to Shelf).
+- **Result**: The internal state now stays perfectly in sync with the hardware/server, ensuring the toggle logic only activates when Q is *actually* 0.
+
+## [v0.93d] - 2024-12-24 (Previous)
 ### Fixed
 - **EQ Section**: Implemented **Optimistic State Updates** for EQ parameters. This ensures that when you change a parameter (like Q), the internal state is updated immediately.
 - **EQ Section**: This fixes the issue where the Low Gain toggle logic might "stick" to the previous Q value (e.g., behaving like HPF/Binary even after Q was changed to Shelf) because the application was waiting for the server echo before updating its logic state.

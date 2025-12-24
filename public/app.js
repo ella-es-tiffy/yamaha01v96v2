@@ -796,7 +796,23 @@ class YamahaTouchRemote {
                 }
 
                 this.syncFaders();
+                this.syncFaders();
                 this.syncEQToSelected();
+            } else if (data.type === 'eq') {
+                // Handle individual EQ parameter updates
+                // format: { channel: 1, band: 'low', param: 'q', value: 0 }
+                const d = data.data;
+                const chIdx = parseInt(d.channel) - 1;
+                if (this.state.channels[chIdx] && this.state.channels[chIdx].eq[d.band]) {
+                    this.state.channels[chIdx].eq[d.band][d.param] = d.value;
+                }
+
+                // Update UI if this is the selected channel
+                if (parseInt(d.channel) === this.selectedChannel) {
+                    const knobId = `enc-${d.band}-${d.param}`;
+                    const knob = document.getElementById(knobId);
+                    if (knob) this.updateKnobUI(knob, d.value);
+                }
             } else if (data.type === 'meters') {
                 // Update only meters, don't touch faders
                 for (let i = 0; i < 32; i++) {
