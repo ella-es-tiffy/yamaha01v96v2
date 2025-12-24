@@ -1,6 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.86d] - 2024-12-24
+## [v0.87d] - 2024-12-24
+### Fixed
+- **EQ Section**: Removed 'OFF' and 'Snap' logic for the **HIGH** band gain (B8 21). This band now remains fully manual and visible, as requested.
+- **EQ Section**: The HPF (Low band Q=0) snap and restore logic remains active, but is now strictly limited to the Low band.
+
+## [v0.86d] - 2024-12-24 (Previous)
 ### Added
 - **EQ Section**: Implemented **LPF** (High Q=0) and **HPF** (Low Q=0) sync logic for both bands.
 - **EQ Section**: Implemented **Gain Restore**: Moving Q back out of the filter zone restores the previous Gain value automatically.
