@@ -455,9 +455,13 @@ class YamahaTouchRemote {
                             const band = knob.dataset.band;
                             const ch = this.selectedChannel;
                             const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
-                            // Toggle only for Low band (HPF zone)
+
+                            // HPF BINARY SWITCH LOGIC (Q=0)
                             if (band === 'low' && chObj && chObj.eq[band] && chObj.eq[band].q === 0) {
-                                if (delta > 2 && startVal < 10) val = 127;
+                                // If HPF is active, any significant movement toggles between 0 and 127
+                                if (delta > 2) val = 127;
+                                else if (delta < -2) val = 0;
+                                else val = startVal; // No change if jump is too small
                             }
                         }
 
@@ -501,8 +505,18 @@ class YamahaTouchRemote {
             if (knob) {
                 e.preventDefault();
                 const currentVal = this.getKnobMIDI(knob);
-                const step = e.deltaY < 0 ? 3 : -3;
-                const newVal = Math.max(0, Math.min(127, currentVal + step));
+                let step = e.deltaY < 0 ? 3 : -3;
+                let newVal = Math.max(0, Math.min(127, currentVal + step));
+
+                // HPF BINARY SWITCH LOGIC for Wheel
+                if (knob.dataset.param === 'gain' && knob.dataset.band === 'low') {
+                    const ch = this.selectedChannel;
+                    const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+                    if (chObj && chObj.eq.low.q === 0) {
+                        newVal = (e.deltaY < 0) ? 127 : 0;
+                    }
+                }
+
                 if (newVal !== currentVal) {
                     this.updateKnobUI(knob, newVal);
                     if (knob.id === 'enc-att') {
@@ -598,10 +612,10 @@ class YamahaTouchRemote {
             const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
             if (chObj && chObj.eq[band]) {
                 const qVal = chObj.eq[band].q;
-                // ONLY Low band Gain snaps to OFF during HPF
+                // --- HPF BINARY VISUAL SNAP ---
                 if (band === 'low' && qVal === 0) {
-                    forceOff = true;
-                    visualVal = 0; // Visual minimum
+                    forceOff = (val < 64);
+                    visualVal = forceOff ? 0 : 127; // Snap to far left or far right
                 }
             }
         }
@@ -633,6 +647,7 @@ class YamahaTouchRemote {
                 let display = hex;
                 if (param === 'gain') {
                     if (band === 'low' && forceOff) display = 'OFF';
+                    else if (band === 'low' && !forceOff && val === 127) display = '+18.0 dB'; // HPF 'ON'
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';
