@@ -1,6 +1,18 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.98d] - 2024-12-24
+## [v0.983d] - 2024-12-24 (Bugfix)
+### Fixed
+- **EQ Section**: Fixed a visual glitch where restoring Low Gain would incorrectly snap the knob to 100% (+18dB) or 0% (OFF) despite the value being correct (e.g., 0.1dB).
+- **Cause**: The `updateKnobUI` function was still reading the old HPF state (Q=0) when rendering the restored gain, triggering the binary "HPF Snap" visualization logic.
+- **Fix**: The Q state is now optimistically updated *immediately* inside the restoration block, ensuring `updateKnobUI` knows the system is back in "Shelf Mode" and renders the knob linearily.
+
+## [v0.982d] - 2024-12-24 (Bugfix)
+### Fixed
+- **EQ Section**: Implemented robust **Gain Backup**:
+  - `syncStoredGains()` runs on every full state update (e.g. boot/bank switch), backing up all current valid gains.
+  - While editing gain (Q>0), the value is now continuously backed up to `storedGains`, ensuring the very last value is saved before any switch to HPF.
+
+## [v0.981d] - 2024-12-24 (Bugfix)
 ### Fixed
 - **Core UI**: Finally removed the stubborn legacy block inside `onMove` that was causing `ReferenceError: band is not defined`.
 - **Status**: The pointer interaction logic is now clean and exclusively uses the centralized `handleEQChange` method. All knobs should again be fully functional and stable.

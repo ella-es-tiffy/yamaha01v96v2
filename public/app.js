@@ -159,7 +159,7 @@ class YamahaTouchRemote {
             </div>
             <div style="display: flex; gap: 5px; flex-direction: column;">
                 <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.98d</span>
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.983d</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
@@ -658,6 +658,11 @@ class YamahaTouchRemote {
                 const delta = newVal - previousValContext;
                 if (previousValContext < 64) newVal = (delta > 0) ? 127 : 0;
                 else newVal = (delta < 0) ? 0 : 127;
+            } else if (chObj && (!chObj.eq[band].q === 0)) {
+                // Continuous Save: If we are modifying Gain in a "Normal" (Non-HPF) mode,
+                // update the storedGain immediately. This ensures we always have the latest value
+                // ready if we suddenly switch Q to 0.
+                this.storedGains[`${ch}-${band}`] = newVal;
             }
         }
 
@@ -677,16 +682,23 @@ class YamahaTouchRemote {
 
                 // RESTORE: Crossing from 0 to >0
                 if (prevQ === 0 && newVal > 0) {
+                    // CRITICAL FIX: Update Q state IMMEDIATELY/EARLY.
+                    // We must let `updateKnobUI` know that Q is no longer 0, otherwise it will
+                    // incorrectly apply the HPF Binary Snap logic (rendering 100% or 0%)
+                    // to the gain value we are about to restore.
+                    if (chObj.eq[band]) chObj.eq[band].q = newVal;
+
                     const key = `${this.selectedChannel}-${band}`;
-                    if (this.storedGains[key] !== undefined) {
-                        const oldGain = this.storedGains[key];
-                        const gainKnob = document.getElementById(`enc-${band}-gain`);
-                        if (gainKnob) {
-                            this.updateKnobUI(gainKnob, oldGain);
-                            this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: oldGain });
-                            // Update optimistic state for gain too
-                            if (chObj.eq[band]) chObj.eq[band].gain = oldGain;
-                        }
+                    // Default to 64 (0dB) if no stored value exists (e.g. fresh boot or never visited Shelf)
+                    // This prevents STICKY MAX GAIN (127) when coming from HPF ON state.
+                    const oldGain = (this.storedGains[key] !== undefined) ? this.storedGains[key] : 64;
+
+                    const gainKnob = document.getElementById(`enc-${band}-gain`);
+                    if (gainKnob) {
+                        this.updateKnobUI(gainKnob, oldGain);
+                        this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: oldGain });
+                        // Update optimistic state for gain too
+                        if (chObj.eq[band]) chObj.eq[band].gain = oldGain;
                     }
                 }
 
@@ -786,6 +798,7 @@ class YamahaTouchRemote {
                 this.syncFaders();
                 this.syncFaders();
                 this.syncEQToSelected();
+                this.syncStoredGains(); // Ensure backup gains are populated from new state
             } else if (data.type === 'eq') {
                 // Handle individual EQ parameter updates
                 // format: { channel: 1, band: 'low', param: 'q', value: 0 }
@@ -881,6 +894,28 @@ class YamahaTouchRemote {
             else if (pct > 70) el.style.background = '#ffcc00'; // Warning
             else el.style.background = '#34c759'; // Normal
         }
+    }
+
+    syncStoredGains() {
+        // Populates storedGains from current state (Bulk/Init)
+        // If a band is NOT in HPF/LPF mode (Q>0), we assume the current gain is a valid "Continuous" value
+        // and store it. This fixes the issue where restoring gain after a boot+HPF toggle sequence
+        // would fallback to 0 or Max because nothing was stored.
+        this.state.channels.forEach((ch, idx) => {
+            if (!ch) return;
+            ['low', 'lmid', 'hmid', 'high'].forEach(band => {
+                if (ch.eq && ch.eq[band]) {
+                    // Start simple: If Q > 0, this gain is a valid 'normal' gain. Backup it.
+                    if (ch.eq[band].q > 0) {
+                        this.storedGains[`${idx + 1}-${band}`] = ch.eq[band].gain;
+                    }
+                }
+            });
+        });
+
+        // Also Master if applicable (Master has no EQ in this map usually, but good practice)
+        // Note: Master in 01V96 usually has EQ too, but state structure might differ. 
+        // Our state.master only lists fader/mute/fxOn.
     }
 
     syncEQToSelected() {
