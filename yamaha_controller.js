@@ -342,6 +342,31 @@ class Yamaha01V96Controller {
         console.log(`🔵 SEL Channel -> ${channel} (Valve: ${val})`);
     }
 
+    async deepSync() {
+        if (!this.connected) return;
+        console.log("🔄 Starting Deep Sync (Looping all channels)...");
+
+        const elements = [
+            { id: 0x1C, name: 'Fader' },
+            { id: 0x1A, name: 'Mute' },
+            { id: 0x1B, name: 'Pan' }
+        ];
+
+        for (const el of elements) {
+            for (let i = 0; i < 32; i++) {
+                // Parameter Request Format: F0 43 30 3E 7F 01 [Element] [P1] [P2] F7
+                const msg = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, el.id, 0x00, i, 0xF7];
+                this.output.sendMessage(msg);
+                if (this.onRawMidi) this.onRawMidi(msg, true);
+
+                // Throttled delay to not overwhelm mixer
+                await new Promise(r => setTimeout(r, 50));
+            }
+        }
+
+        console.log("✅ Deep Sync Loop Finished");
+    }
+
     disconnect() {
         if (this.meterInterval) clearInterval(this.meterInterval);
         if (this.connected) {

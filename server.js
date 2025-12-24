@@ -37,6 +37,7 @@ wss.on('connection', (ws) => {
             console.log('WS RX:', data.type, data.channel, data.value);
             if (data.type === 'setFader') yamaha.setFader(data.channel, data.value);
             else if (data.type === 'setMute') yamaha.setMute(data.channel, data.value);
+            else if (data.type === 'sync') yamaha.deepSync(); // Added 'sync' command
             else if (data.type === 'requestSync') yamaha.requestInitialState();
             // --- NEW EQ HANDLER ---
             else if (data.type === 'setEQ') yamaha.setEQ(data.channel, data.band, data.param, data.value);

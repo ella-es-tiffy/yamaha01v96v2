@@ -39,7 +39,21 @@ Format: `F0 43 10 3E 0D 04 [AddrHigh] [AddrLow] 00 00 00 00 [Value] F7`
 
 ---
 
-## 3. Metering
+## 3. Bulk Dump (Full State)
+Format: `F0 43 0n 7E [LenHigh] [LenLow] 4C 4D 20 20 38 43 39 33 [Block] ... F7`
+(Header: "LM  8C93")
+
+| Block ID | Hex | Content |
+| :--- | :--- | :--- |
+| **m** | 0x6D | Scene / Memory Data |
+| **C** | 0x43 | **Channel Data (Faders, Mutes, Pans, EQs)** |
+| **S** | 0x53 | Setup Data |
+| **V** | 0x56 | VCA / Group Data |
+| **U** | 0x55 | User Defined Keys |
+
+---
+
+## 4. Metering
 To receive live meter levels for all channels:
 
 **Request:** `F0 43 10 3E 0D 21 F7`

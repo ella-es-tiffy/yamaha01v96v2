@@ -260,7 +260,7 @@ class YamahaTouchRemote {
             const btn = e.target;
             if (btn.classList.contains('cooldown')) return;
 
-            this.send('requestSync', {});
+            this.send('sync', {});
 
             // Start Cooldown
             btn.classList.add('cooldown');
