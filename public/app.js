@@ -492,39 +492,53 @@ class YamahaTouchRemote {
     updateKnobUI(knobEl, midiVal) {
         if (!knobEl) return;
 
-        // Safety check for NaN or undefined values often caused by mid-sync state updates
-        const val = (midiVal === undefined || isNaN(midiVal)) ? 64 : midiVal;
+        let val = (midiVal === undefined || isNaN(midiVal)) ? 64 : midiVal;
+        const hex = val.toString(16).toUpperCase().padStart(2, '0');
+        const parts = knobEl.id.split('-');
+        const isEQ = knobEl.id.startsWith('enc-');
+        const band = isEQ ? parts[1] : null;
+        const param = isEQ ? parts[2] : null;
 
-        const deg = ((val / 127) * 260) - 130;
-        const indicator = knobEl.querySelector('.knob-indicator');
-        if (indicator) {
-            indicator.setAttribute('transform', `rotate(${deg}, 30, 30)`);
+        // --- FILTER OVERRIDE LOGIC (Optisch wie gewünscht) ---
+        let visualVal = val;
+        let forceOff = false;
+
+        if (isEQ && param === 'gain') {
+            const ch = this.selectedChannel;
+            const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
+            if (chObj && chObj.eq[band]) {
+                const qVal = chObj.eq[band].q;
+                const isFilter = (band === 'low' && qVal === 0) || (band === 'high' && qVal === 0);
+                if (isFilter) {
+                    forceOff = true;
+                    visualVal = 0; // Snap visual to far left
+                }
+            }
         }
+
+        const deg = ((visualVal / 127) * 260) - 130;
+        const indicator = knobEl.querySelector('.knob-indicator');
+        if (indicator) indicator.setAttribute('transform', `rotate(${deg}, 30, 30)`);
+
         const ring = document.getElementById('ring-' + knobEl.id);
         if (ring) {
-            const offset = 120 - ((val / 127) * 120);
+            const offset = 120 - ((visualVal / 127) * 120);
             ring.setAttribute('stroke-dashoffset', offset);
         }
+
         knobEl.dataset.midi = val;
         const valEl = document.getElementById('val-' + knobEl.id);
         if (valEl) {
-            const hex = val.toString(16).toUpperCase().padStart(2, '0');
+            const hexLabel = this.debugUI ? ` [${hex}]` : '';
             if (knobEl.id.startsWith('pan-')) {
-                // PAN CUSTOM DISPLAY (Hex toggled by debugUI)
-                const hexLabel = this.debugUI ? ` (${hex})` : '';
-                if (val === 64) valEl.innerText = `CENTER${hexLabel}`;
-                else if (val < 64) valEl.innerText = `L${64 - val}${hexLabel}`;
-                else valEl.innerText = `R${val - 64}${hexLabel}`;
-            } else if (knobEl.id.startsWith('enc-')) {
-                // EQ VALUE MAPPING
-                const parts = knobEl.id.split('-');
-                const band = parts[1];
-                const param = parts[2];
-                const hexLabel = this.debugUI ? ` [${hex}]` : '';
+                const hexLabelPan = this.debugUI ? ` (${hex})` : '';
+                if (val === 64) valEl.innerText = `CENTER${hexLabelPan}`;
+                else if (val < 64) valEl.innerText = `L${64 - val}${hexLabelPan}`;
+                else valEl.innerText = `R${val - 64}${hexLabelPan}`;
+            } else if (isEQ) {
                 let display = hex;
-
                 if (param === 'gain') {
-                    if (val === 0) display = 'OFF';
+                    if (val === 0 || forceOff) display = 'OFF';
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';
@@ -538,14 +552,13 @@ class YamahaTouchRemote {
                     else if (band === 'high' && val === 127) display = 'H.SHLF';
                     else if (band === 'high' && val === 0) display = 'LPF';
                     else {
-                        // Q Mapping: 1=10.0, 126=0.10
-                        const qVal = (10 - (val / 127) * 9.9).toFixed(2);
-                        display = qVal;
+                        // Q Mapping: val=1 -> 10.0, val=126 -> 0.10
+                        const qValRaw = 10 - ((val - 1) / 125) * 9.9;
+                        display = Math.max(0.1, Math.min(10, qValRaw)).toFixed(2);
                     }
                 }
                 valEl.innerText = display + hexLabel;
             } else {
-                // DEFAULT HEX
                 valEl.innerText = hex;
             }
         }
