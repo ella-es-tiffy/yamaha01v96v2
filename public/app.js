@@ -399,7 +399,29 @@ class YamahaTouchRemote {
         this.socket.onmessage = (msg) => {
             const data = JSON.parse(msg.data);
             if (data.type === 'state') {
-                this.state = data.data;
+                // Merge state selectively to preserve local fader values during drag
+                const newState = data.data;
+
+                // Update channels, but preserve fader value if actively dragging
+                for (let i = 0; i < 32; i++) {
+                    if (!this.state.channels[i]) this.state.channels[i] = newState.channels[i];
+                    else {
+                        // Preserve fader during drag
+                        const preserveFader = this.activeFader === String(i + 1);
+                        this.state.channels[i] = {
+                            ...newState.channels[i],
+                            fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader
+                        };
+                    }
+                }
+
+                // Update master, preserve fader if dragging
+                const preserveMasterFader = this.activeFader === 'master';
+                this.state.master = {
+                    ...newState.master,
+                    fader: preserveMasterFader ? this.state.master.fader : newState.master.fader
+                };
+
                 this.syncFaders();
                 this.syncEQToSelected();
             } else if (data.type === 'midiLog') {
