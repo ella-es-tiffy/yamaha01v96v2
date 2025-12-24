@@ -16,7 +16,7 @@ Format: `F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7`
 | **0x1C** | Fader | 0x00 | 0-31 (CH), 32-35 (ST), 36-43 (Bus), 44-51 (Aux) | 10-bit: `00 00 (V>>7) (V&7F)` |
 | **0x1A** | Mute / ON | 0x00 | same as above | `00 00 00 01` (ON), `00 00 00 00` (MUTED) |
 | **0x1B** | Pan | 0x00 | 0-31 (CH) | Signed 7-bit: L63=`7F 7F 7F 41`, C=`00`, R63=`3F` |
-| **0x12** | Attenuation | 0x00 | 0-31 (CH) | 7-bit: 0-127 (Digital Gain/Trim) |
+| **0x1D** | Attenuation | 0x00 | 0-31 (CH) | 10-bit: ~16000 = 0dB. Range -96dB to +12dB. |
 | **0x2B** | Aux Send | 0-7 (Aux#) | 0-31 (CH) | 10-bit: Level of the channel to specific Aux |
 | **0x22** | Routing | 0x00 (ST), 0x02 (DIR), 0x03-0A (Bus 1-8) | 0-31 (CH) | `01` (Active), `00` (Inactive) |
 | **0x4F** | Master Fader | 0x00 | 0x00 (Fixed) | 10-bit Master Level |
@@ -26,7 +26,8 @@ Format: `F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7`
 | P1 | Parameter | Band | Range / Notes |
 | :--- | :--- | :--- | :--- |
 | **0x0F** | EQ On/Off | Global | 1 = ON, 0 = OFF |
-| **0x0E** | EQ Type | Global | 0 = Type I, 1 = Type II |
+| **0x0E** | (Reserved?) | | Old Assumption was Type |
+| **0x00** | EQ Type | Global | 0 = Type I, 1 = Type II |
 | **0x01/02/03** | Q / Freq / Gain | **Low** | Gain is signed (18.0dB to -18.0dB) |
 | **0x05/06/07** | Q / Freq / Gain | **L-Mid** | **Corrected:** Gain=0x07, Q=0x05, Freq=0x06 |
 | **0x08/09/0A** | Q / Freq / Gain | **H-Mid** | **Corrected:** Gain=0x0A, Q=0x08, Freq=0x09 |

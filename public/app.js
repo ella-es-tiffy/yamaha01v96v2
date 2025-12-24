@@ -116,13 +116,7 @@ class YamahaTouchRemote {
                 </div>
                 <span style="color: #444; font-size: 0.5rem; letter-spacing: 2px; font-weight: 300; text-transform: uppercase;">4-Band Parametric Equalizer</span>
             </div>
-            <div class="eq-header" style="margin-bottom: 0; opacity: 0.3;">
-                <div></div>
-                <div class="eq-column-header">1</div>
-                <div class="eq-column-header">2</div>
-                <div class="eq-column-header">3</div>
-                <div class="eq-column-header">4</div>
-            </div>
+
             <div class="eq-header">
                 <div></div> <!-- Spacer for Label Col -->
                 <div class="eq-column-header">LOW</div>
@@ -137,19 +131,26 @@ class YamahaTouchRemote {
 
         // --- GLOBAL EQ SECTION (TOP) ---
         const globalRow = document.createElement('div');
-        globalRow.style.display = 'grid';
-        globalRow.style.gridTemplateColumns = '80px 100px 1fr';
-        globalRow.style.gap = '20px';
-        globalRow.style.alignItems = 'center';
+        globalRow.style.position = 'relative';
+        globalRow.style.overflow = 'hidden';
+        globalRow.style.border = '1px solid var(--glass-border)';
+        globalRow.style.borderRadius = '6px';
         globalRow.style.marginBottom = '20px';
-        globalRow.style.padding = '0 10px';
+        globalRow.style.background = '#0d0d0d'; // Darker background
 
-        globalRow.innerHTML = `
+        const innerGrid = document.createElement('div');
+        innerGrid.style.display = 'grid';
+        innerGrid.style.gridTemplateColumns = '100px 100px 1fr';
+        innerGrid.style.gap = '20px';
+        innerGrid.style.alignItems = 'center';
+        innerGrid.style.padding = '10px';
+
+        innerGrid.innerHTML = `
             <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center;">
                 <div class="row-label" style="font-size: 0.6rem; color: #666;">ATT</div>
                 <div style="position: relative;">
                     <div class="value-display" id="val-enc-att" style="position: absolute; top: -15px; width: 60px; text-align: center; left: 50%; transform: translateX(-50%); font-size: 0.5rem; color: var(--accent);">--</div>
-                    <svg class="knob-svg" id="enc-att" viewBox="0 0 60 60" style="width: 40px; height: 40px;">
+                    <svg class="knob-svg" id="enc-att" viewBox="0 0 60 60" style="width: 70px; height: 70px;">
                         <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
                         <path id="ring-enc-att" d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-active" stroke-linecap="round" stroke-dasharray="120" stroke-dashoffset="120" />
                         <circle cx="30" cy="30" r="20" class="knob-circle"></circle>
@@ -158,15 +159,32 @@ class YamahaTouchRemote {
                 </div>
             </div>
             <div style="display: flex; gap: 5px; flex-direction: column;">
-                <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.985d-Fix3</span>
+                <span class="eq-label"
+                    style="font-size: 0.6rem; color: #666; width: 100%; text-align: center; letter-spacing: 4px;">TY PE</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
                 </div>
+                <button id="btn-eq-reset" style="margin-top: 4px; font-size: 0.5rem; padding: 4px; background: #330000; border: 1px solid #500; color: #f88; border-radius: 2px; cursor: pointer; font-weight: bold;">RESET</button>
             </div>
             <div></div>
         `;
+
+        // Safety Cover
+        const cover = document.createElement('div');
+        cover.className = 'safety-cover';
+        cover.innerHTML = `<div class="safety-handle"></div><div class="safety-label">LOCK</div>`;
+        cover.addEventListener('click', () => {
+            cover.classList.add('open');
+        });
+
+        // Auto-close when mouse leaves the header area
+        globalRow.addEventListener('mouseleave', () => {
+            cover.classList.remove('open');
+        });
+
+        globalRow.appendChild(innerGrid);
+        globalRow.appendChild(cover);
         eqArea.appendChild(globalRow);
 
         grid.innerHTML = '';
@@ -483,6 +501,15 @@ class YamahaTouchRemote {
                 const ch = (this.selectedChannel === 'master') ? this.state.master : this.state.channels[this.selectedChannel - 1];
                 if (ch) ch.eqType = type;
                 this.syncEQToSelected();
+            } else if (e.target.id === 'btn-eq-reset') {
+                if (confirm('Reset EQ for this channel?')) {
+                    this.send('resetEQ', { channel: this.selectedChannel });
+                    // After a short delay, request update or rely on incoming parameter changes
+                    // For now, we rely on the mixer sending back the new values, 
+                    // OR we could optimistically set them, but Reset affects 12 params.
+                    // A quick "Deep Sync" for one channel would be ideal, but for now 
+                    // the backend sends the individual params so the UI should update via WebSocket!
+                }
             }
         });
     }
@@ -682,7 +709,7 @@ class YamahaTouchRemote {
 
                 // RESTORE: Crossing from 0 to >0
                 if (prevQ === 0 && newVal > 0) {
-                    // YAMAHA 01V96 PRO TOUCH ENGINE v0.985date Q state IMMEDIATELY/EARLY.
+                    // Update state IMMEDIATELY/EARLY.
                     // We must let `updateKnobUI` know that Q is no longer 0, otherwise it will
                     // incorrectly apply the HPF Binary Snap logic (rendering 100% or 0%)
                     // to the gain value we are about to restore.
@@ -947,9 +974,15 @@ class YamahaTouchRemote {
         // EQ TYPE
         document.querySelectorAll('.eq-type-btn').forEach(btn => {
             const isSelected = parseInt(btn.dataset.type) === (chObj.eqType || 0);
-            btn.style.background = isSelected ? 'var(--accent)' : '#222';
-            btn.style.color = isSelected ? '#000' : '#666';
-            btn.style.borderColor = isSelected ? 'var(--accent)' : '#333';
+            if (isSelected) {
+                btn.style.background = '#ffcc00'; // Yamaha Orange active
+                btn.style.color = '#000';
+                btn.style.fontWeight = 'bold';
+            } else {
+                btn.style.background = '#222';
+                btn.style.color = '#666';
+                btn.style.fontWeight = 'normal';
+            }
         });
     }
 

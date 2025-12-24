@@ -161,15 +161,15 @@ class Yamaha01V96Controller {
                     const val7 = message[f7Pos - 1];
 
                     // --- Advanced Element Mapping ---
-                    // 1C=Fader, 1A=Mute, 1B=Pan, 20=EQ, 12=Att (Trim), 2B=AuxSend, 1E=Gate, 1F=Comp, 22=Routing
-                    if ([0x1C, 0x1A, 0x1B, 0x20, 0x12, 0x2B, 0x1E, 0x1F, 0x22].includes(element)) {
+                    // 1C=Fader, 1A=Mute, 1B=Pan, 20=EQ, 1D=Att (Trim), 2B=AuxSend, 1E=Gate, 1F=Comp, 22=Routing
+                    if ([0x1C, 0x1A, 0x1B, 0x20, 0x1D, 0x2B, 0x1E, 0x1F, 0x22].includes(element)) {
                         if (p2 >= 0 && p2 < 36) {
                             const ch = this.state.channels[p2];
                             switch (element) {
                                 case 0x1C: ch.fader = val14; break;
                                 case 0x1A: ch.mute = (val7 === 0); break;
                                 case 0x1B: ch.pan = (message[f7Pos - 3] === 0x7F) ? (64 - (128 - val7)) : (64 + val7); break;
-                                case 0x12: ch.att = val7; break;
+                                case 0x1D: ch.att = val7; break;
                                 case 0x22: // Routing (Bus, Stereo, Direct)
                                     if (p1 === 0x00) ch.routing.stereo = (val7 === 1);
                                     else if (p1 === 0x02) ch.routing.direct = (val7 === 1);
@@ -199,7 +199,7 @@ class Yamaha01V96Controller {
                                     break;
                                 case 0x20:
                                     if (p1 === 0x0F) ch.eqOn = (val7 === 1);
-                                    else if (p1 === 0x0E) ch.eqType = val7;
+                                    else if (p1 === 0x00) ch.eqType = val7;
                                     else {
                                         const m = {
                                             0x01: { b: 'low', p: 'q' }, 0x02: { b: 'low', p: 'freq' }, 0x03: { b: 'low', p: 'gain' },
@@ -453,16 +453,26 @@ class Yamaha01V96Controller {
     setAttenuation(channel, value) {
         if (!this.connected) return;
         const chIdx = (channel === 'master') ? 56 : (parseInt(channel) - 1);
-        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x12, 0x00, chIdx, 0x00, 0x00, 0x00, value, 0xF7];
+
+        // Map UI (0-127) -> Mixer (0-18000 approx for -96 to +12dB)
+        // User log: 0dB is ~16000. +12dB is likely ~18000. -96dB is 0.
+        // Formula: val * 144 (approx 127*144 = 18288)
+        const mixerVal = value * 142;
+
+        const d2 = (mixerVal >> 7) & 0x7F;
+        const d3 = mixerVal & 0x7F;
+
+        // Data: 00 00 D2 D3 (Try positive first)
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1D, 0x00, chIdx, 0x00, 0x00, d2, d3, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
-        console.log(`📉 Attenuation ${channel} -> ${value}`);
+        console.log(`📉 Attenuation ${channel} -> ${value} (Mixer: ${mixerVal})`);
     }
 
     setEQType(channel, type) {
         if (!this.connected) return;
         const chIdx = (channel === 'master') ? 56 : (parseInt(channel) - 1);
-        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x0E, chIdx, 0x00, 0x00, 0x00, type, 0xF7];
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x00, chIdx, 0x00, 0x00, 0x00, type, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
         console.log(`🎚️ EQ Type ${channel} -> ${type}`);
@@ -479,6 +489,27 @@ class Yamaha01V96Controller {
         if (this.onRawMidi) this.onRawMidi(msg, true);
 
         console.log(`🔵 SEL Channel -> ${channel} (Valve: ${val})`);
+    }
+
+    resetEQ(channel) {
+        if (!this.connected) return;
+        // Default Values: Gain=0dB (64), Q=1.0 (115)
+        // Freqs: Low=75Hz (23), LMid=250Hz (46), HMid=1.5kHz (79), High=10kHz (114)
+
+        const settings = [
+            { band: 'low', q: 115, f: 23, g: 64 },
+            { band: 'lmid', q: 115, f: 46, g: 64 },
+            { band: 'hmid', q: 115, f: 79, g: 64 },
+            { band: 'high', q: 115, f: 114, g: 64 }
+        ];
+
+        console.log(`🧹 Resetting EQ for Channel ${channel}...`);
+
+        settings.forEach(s => {
+            this.setEQ(channel, s.band, 'q', s.q);
+            this.setEQ(channel, s.band, 'freq', s.f);
+            this.setEQ(channel, s.band, 'gain', s.g);
+        });
     }
 
     async deepSync() {
