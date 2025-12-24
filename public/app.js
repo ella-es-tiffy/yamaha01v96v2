@@ -150,7 +150,7 @@ class YamahaTouchRemote {
                 cell.className = 'knob-container';
                 cell.innerHTML = `
                     <div class="knob-addr" id="addr-${id}" style="${this.debugUI ? '' : 'display:none;'}">-- --</div>
-                    <div class="value-display" id="val-${id}" style="${this.debugUI ? '' : 'display:none;'}">--</div>
+                    <div class="value-display" id="val-${id}">--</div>
                     <svg class="knob-svg eq-knob" id="${id}" viewBox="0 0 60 60" data-band="${band}" data-param="${row.id}">
                         <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
                         <path id="ring-${id}" d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-active" stroke-linecap="round" stroke-dasharray="120" stroke-dashoffset="120" />
@@ -464,14 +464,15 @@ class YamahaTouchRemote {
         knobEl.dataset.midi = val;
         const valEl = document.getElementById('val-' + knobEl.id);
         if (valEl) {
+            const hex = val.toString(16).toUpperCase().padStart(2, '0');
             if (knobEl.id.startsWith('pan-')) {
-                // PAN CUSTOM DISPLAY
-                if (val === 64) valEl.innerText = "CENTER (40h)";
-                else if (val < 64) valEl.innerText = `L${64 - val} (${val.toString(16).toUpperCase().padStart(2, '0')}h)`;
-                else valEl.innerText = `R${val - 64} (${val.toString(16).toUpperCase().padStart(2, '0')}h)`;
+                // PAN CUSTOM DISPLAY (No 'h')
+                if (val === 64) valEl.innerText = `CENTER (${hex})`;
+                else if (val < 64) valEl.innerText = `L${64 - val} (${hex})`;
+                else valEl.innerText = `R${val - 64} (${hex})`;
             } else {
-                // DEFAULT HEX (EQ, etc)
-                valEl.innerText = val.toString(16).toUpperCase().padStart(2, '0') + 'h';
+                // DEFAULT HEX (EQ, etc) - No 'h' suffix
+                valEl.innerText = hex;
             }
         }
     }
