@@ -96,15 +96,27 @@ class Yamaha01V96Controller {
         // Accepts both device IDs (43 10 and 43 30)
         // message[5] == 0x21, length >= 70
         // Data at index 9 with stride 2
+        // Structure: 32 channels, then 8 bus, 8 aux, then stereo master L/R
         if (message.length >= 70 && message[0] === 0xF0 && message[1] === 0x43 && message[5] === 0x21) {
+            // Parse 32 channel meters
             for (let i = 0; i < 32; i++) {
                 const val = message[9 + (i * 2)];
                 if (this.state.channels[i]) {
                     this.state.channels[i].meter = val || 0;
                 }
             }
-            this.state.master.meter = message[9 + (32 * 2)] || 0;
-            meterChanged = true; // Don't trigger full state change for meters
+
+            // Master L/R is after: 32 channels + 8 bus + 8 aux = 48 meters
+            // Position: 9 + (48 * 2) = 105 for L, 107 for R
+            const masterL = message[9 + (48 * 2)] || 0;
+            const masterR = message[9 + (49 * 2)] || 0;
+
+            // Use average or max for single master meter
+            this.state.master.meter = Math.max(masterL, masterR);
+            this.state.master.meterL = masterL;
+            this.state.master.meterR = masterR;
+
+            meterChanged = true;
         }
 
 
