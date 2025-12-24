@@ -291,6 +291,16 @@ class YamahaTouchRemote {
             }
         });
 
+        document.getElementById('ver-btn')?.addEventListener('click', () => {
+            const overlay = document.getElementById('changelog-overlay');
+            overlay.style.display = 'flex';
+            this.send('getChangelog', {});
+        });
+
+        document.getElementById('close-changelog')?.addEventListener('click', () => {
+            document.getElementById('changelog-overlay').style.display = 'none';
+        });
+
         document.getElementById('sync-btn').addEventListener('click', (e) => {
             const btn = e.target;
             if (btn.classList.contains('cooldown')) return;
@@ -587,8 +597,9 @@ class YamahaTouchRemote {
                 for (let i = this.currentBankStart; i <= end; i++) {
                     this.updateMeterUI(i, this.state.channels[i - 1].meter);
                 }
-            } else if (data.type === 'midiLog') {
-                this.logMidi(data.data);
+            } else if (data.type === 'changelog') {
+                const body = document.getElementById('changelog-body');
+                if (body) body.innerHTML = data.data;
             }
         };
     }

@@ -44,9 +44,23 @@ wss.on('connection', (ws) => {
             else if (data.type === 'setEQOn') yamaha.setEQOn(data.channel, data.value);
             else if (data.type === 'setSelectChannel') yamaha.setSelectedChannel(data.channel);
             else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
+            else if (data.type === 'getChangelog') {
+                fs.readFile(path.join(__dirname, 'changelog.md'), 'utf8', (err, log) => {
+                    if (err) ws.send(JSON.stringify({ type: 'changelog', data: 'Changelog not found.' }));
+                    else ws.send(JSON.stringify({ type: 'changelog', data: formatMarkdown(log) }));
+                });
+            }
         } catch (e) { console.error('WS Error:', e); }
     });
 });
+
+function formatMarkdown(md) {
+    return md
+        .replace(/## \[(.*?)\] - (.*?)\n/g, '<div style="margin-top:25px; border-bottom: 2px solid #333; padding-bottom:10px;"><h3 style="color:var(--accent); display:inline;">v$1</h3> <span style="color:#666; font-size:0.8rem;">($2)</span></div>')
+        .replace(/### (.*?)\n/g, '<h4 style="color:#aaa; border-left: 3px solid var(--accent); padding-left:10px; margin-top:15px;">$1</h4>')
+        .replace(/- (.*?)\n/g, '<div style="padding-left:15px; margin-bottom:5px;">• $1</div>')
+        .replace(/\n\n/g, '<br>');
+}
 
 function broadcast(data) {
     const msg = JSON.stringify(data);
