@@ -613,3 +613,79 @@ header {
     border-color: #ffaa00 !important;
     box-shadow: 0 0 8px #ffcc00 !important;
 }
+/* DEVELOPER PANEL - PREMIUM GLASS LOOK */
+.dev-panel {
+    flex: 0 0 240px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #111 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    margin-left: 15px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    height: fit-content;
+    align-self: flex-start;
+    margin-top: 10px;
+}
+
+.dev-header {
+    font-size: 0.65rem;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.dev-group {
+    margin-bottom: 20px;
+}
+
+.dev-group label {
+    display: block;
+    font-size: 0.55rem;
+    color: #666;
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.dev-btn {
+    width: 100%;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dev-btn:active {
+    background: var(--accent);
+    color: #000;
+    transform: scale(0.98);
+}
+
+/* Range slider styling */
+input[type=range] {
+    -webkit-appearance: none;
+    background: #222;
+    height: 4px;
+    border-radius: 2px;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0,210,255,0.5);
+}

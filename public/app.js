@@ -12,6 +12,7 @@ class YamahaTouchRemote {
         this.activeKnob = null;
         this.activeFader = null; // Track which fader is being actively moved
         this.debugUI = false; // Toggle for hex values/addresses
+        this.meterOffset = 0; // Noise gate for meters
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
@@ -324,10 +325,7 @@ class YamahaTouchRemote {
 
             btn.innerText = `SYNC (10s)`;
         });
-        document.getElementById('debug-btn').addEventListener('click', () => {
-            const l = document.getElementById('debug-log');
-            l.style.display = l.style.display === 'none' ? 'block' : 'none';
-        });
+
 
         document.getElementById('debug-ui-btn')?.addEventListener('click', (e) => {
             this.debugUI = !this.debugUI;
@@ -341,6 +339,27 @@ class YamahaTouchRemote {
 
             const masterAddr = document.getElementById('addr-master');
             if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
+
+            // TOGGLE DEV PANEL
+            const devPanel = document.getElementById('dev-panel');
+            if (devPanel) devPanel.style.display = this.debugUI ? 'flex' : 'none';
+        });
+
+        // Developer Settings Handlers
+        document.getElementById('meter-offset-slider')?.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            this.meterOffset = val;
+            document.getElementById('meter-offset-val').innerText = val;
+        });
+
+        document.getElementById('debug-btn')?.addEventListener('click', () => {
+            const l = document.getElementById('debug-log');
+            if (l) l.style.display = l.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.getElementById('refresh-meters')?.addEventListener('click', () => {
+            console.log('🔄 Manually requesting meters...');
+            this.send('sync', { type: 'meters' }); // Specific meter sync if supported, otherwise full
         });
 
         document.getElementById('copy-debug')?.addEventListener('click', () => {
@@ -647,15 +666,23 @@ class YamahaTouchRemote {
     }
 
     updateMeterUI(ch, val) {
+        // val comes as 7-bit (0-127)
+        // APPLY OFFSET (Noise Gate/Floor)
+        // meterOffset is 0-100. We map it to 0-127 range.
+        const gateThreshold = Math.round((this.meterOffset / 100) * 80);
+        const displayVal = val < gateThreshold ? 0 : val;
+
         const el = document.getElementById(`meter-${ch}`);
-        if (!el) return;
-        // 0-127 approx range
-        const pct = Math.min(100, (val / 60) * 100); // 01V meters are weird, peak is around 0x20-0x40? Let's guess scaling.
-        // Actually, typical MIDI VL is 0-127. 69 (0x45) is loud? 
-        el.style.height = `${pct}%`;
-        if (pct > 90) el.style.background = '#f00';
-        else if (pct > 70) el.style.background = '#ff0';
-        else el.style.background = '#0f0';
+        if (el) {
+            // Scaling: 01V meters often peak early in MIDI. Let's use 60 as full scale.
+            const pct = Math.min(100, (displayVal / 60) * 100);
+            el.style.height = `${pct}%`;
+
+            // Color grading (based on percentage)
+            if (pct > 90) el.style.background = '#ff3b30'; // Clip
+            else if (pct > 70) el.style.background = '#ffcc00'; // Warning
+            else el.style.background = '#34c759'; // Normal
+        }
     }
 
     syncEQToSelected() {
