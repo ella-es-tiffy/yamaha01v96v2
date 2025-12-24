@@ -416,11 +416,16 @@ class YamahaTouchRemote {
         const end = Math.min(32, this.currentBankStart + 7);
         for (let i = this.currentBankStart; i <= end; i++) {
             const ch = this.state.channels[i - 1];
-            this.updateFaderUI(i, ch.fader);
+            // Don't update fader if user is actively moving it
+            if (this.activeFader !== String(i)) {
+                this.updateFaderUI(i, ch.fader);
+            }
             this.updateMuteUI(i, ch.mute);
             this.updateMeterUI(i, ch.meter);
         }
-        this.updateFaderUI('master', this.state.master.fader);
+        if (this.activeFader !== 'master') {
+            this.updateFaderUI('master', this.state.master.fader);
+        }
         this.updateMuteUI('master', this.state.master.mute);
     }
 
