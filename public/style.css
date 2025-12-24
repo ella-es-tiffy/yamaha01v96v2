@@ -516,10 +516,11 @@ header {
     color: var(--accent);
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.65rem;
-    /* Reduced */
     font-weight: 900;
     width: 44px;
-    /* Reduced from 54px */
+    height: 14px;
+    /* Fixed height to prevent jumps */
+    line-height: 12px;
     text-align: center;
     padding: 1px 0;
     border: 1px solid #000;
@@ -527,6 +528,8 @@ header {
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
     border-radius: 3px;
     text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .knob-svg {
@@ -613,6 +616,7 @@ header {
     border-color: #ffaa00 !important;
     box-shadow: 0 0 8px #ffcc00 !important;
 }
+
 /* DEVELOPER PANEL - PREMIUM GLASS LOOK */
 .dev-panel {
     flex: 0 0 240px;
@@ -675,6 +679,7 @@ header {
 /* Range slider styling */
 input[type=range] {
     -webkit-appearance: none;
+    appearance: none;
     background: #222;
     height: 4px;
     border-radius: 2px;
@@ -682,10 +687,11 @@ input[type=range] {
 
 input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none;
+    appearance: none;
     width: 15px;
     height: 15px;
     background: var(--accent);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 5px rgba(0,210,255,0.5);
+    box-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
 }

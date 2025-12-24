@@ -1,6 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.84d] - 2024-12-24
+## [v0.85d] - 2024-12-24
+### Changed
+- **EQ Section**: Refined Gain-OFF logic. HPF snap (Gain -> OFF) now strictly applies to the **LOW** band only. **HIGH** band gain now remains active/visible at all times as requested.
+- **UI Stability**: Stabilized the EQ knob layout by giving the value displays a fixed height and line-height, preventing visual "jumps" when switching between labels (e.g., 'OFF' vs 'dB').
+
+## [v0.84d] - 2024-12-24 (Previous)
 ### Added
 - **EQ Section**: Implemented "ATT" (Attenuation) encoder with -96dB to +12dB range mapping.
 - **EQ Section**: Added "TYPE 1" and "TYPE 2" buttons for global EQ algorithm selection.
