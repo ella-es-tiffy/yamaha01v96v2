@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Yamaha Meter-Stream Sniffer & Watchdog</title>
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --panel: #16161a;
+            --accent: #00d2ff;
+            --danger: #ff3b30;
+            --warning: #ffcc00;
+            --success: #34c759;
+            --text: #e0e0e0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .status-ok {
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-stale {
+            background: rgba(255, 204, 0, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .status-dead {
+            background: rgba(255, 59, 48, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            flex: 1;
+        }
+
+        .card {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            font-size: 0.7rem;
+            color: #666;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--accent);
+            font-family: monospace;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            color: #444;
+            margin-left: 5px;
+        }
+
+        .log-container {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            overflow-y: auto;
+            color: #0f0;
+            margin-top: 10px;
+        }
+
+        .trace-item {
+            border-bottom: 1px solid #111;
+            padding: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .graph-container {
+            height: 100px;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            margin-top: auto;
+        }
+
+        .graph-bar {
+            flex: 1;
+            background: var(--accent);
+            min-height: 2px;
+            transition: height 0.1s ease;
+            opacity: 0.5;
+        }
+
+        .btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .btn:hover {
+            background: #444;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div>
+            <h1 style="margin:0; font-size: 1.2rem;">Meter-Stream Sniffer</h1>
+            <p style="margin:5px 0 0 0; color: #666; font-size: 0.75rem;">Diagnose Tool für Yamaha 01V96 MIDI-Traffic
+            </p>
+        </div>
+        <div id="connection-status" class="status-badge status-dead">Disconnected</div>
+    </div>
+
+    <div class="dashboard">
+        <!-- PPS (Packets Per Second) -->
+        <div class="card">
+            <div class="card-header">Traffic Density</div>
+            <div>
+                <span class="metric-value" id="val-pps">0</span>
+                <span class="metric-unit">msg/s</span>
+            </div>
+            <div class="graph-container" id="pps-graph"></div>
+        </div>
+
+        <!-- Latency / Last Seen -->
+        <div class="card">
+            <div class="card-header">Stream Heartbeat</div>
+            <div>
+                <span class="metric-value" id="val-heartbeat">0</span>
+                <span class="metric-unit">ms since last update</span>
+            </div>
+            <div id="heartbeat-status" style="margin-top: 10px; font-size: 0.8rem; font-weight: bold;">STAYING ALIVE...
+            </div>
+            <div style="margin-top: auto; font-size: 0.65rem; color: #444;">
+                Hängt der Stream länger als 5s? -> Pult Neustart erforderlich.
+            </div>
+        </div>
+
+        <!-- MIDI LOG -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-header" style="display: flex; justify-content: space-between;">
+                <span>Live Meter Data Trace</span>
+                <button class="btn" onclick="clearLog()">Clear</button>
+            </div>
+            <div class="log-container" id="log">
+                <div style="color: #444;">Warte auf Meter-Pakete...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let lastMsgTime = Date.now();
+        let msgCount = 0;
+        let ppsHistory = new Array(50).fill(0);
+
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${protocol}//${window.location.hostname}:3007`);
+
+            socket.onopen = () => {
+                const badge = document.getElementById('connection-status');
+                badge.innerText = 'Connected';
+                badge.className = 'status-badge status-ok';
+            };
+
+            socket.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'meters') {
+                    lastMsgTime = Date.now();
+                    msgCount++;
+                    updateLog(msg.data);
+                }
+            };
+
+            socket.onclose = () => {
+                const badge = document.getElementById('connection-status');
+                badge.innerText = 'Disconnected';
+                badge.className = 'status-badge status-dead';
+                setTimeout(connect, 2000);
+            };
+        }
+
+        function updateLog(data) {
+            const log = document.getElementById('log');
+            const item = document.createElement('div');
+            item.className = 'trace-item';
+            const timestamp = new Date().toLocaleTimeString();
+            item.innerHTML = `<span>[${timestamp}] Meter Bulk Received</span> <span style="color:#666">${data.channels.length} Ch + Master</span>`;
+            log.insertBefore(item, log.firstChild);
+            if (log.children.length > 50) log.lastChild.remove();
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Dashboard Stats Loop
+        setInterval(() => {
+            // PPS
+            document.getElementById('val-pps').innerText = msgCount;
+            ppsHistory.push(msgCount);
+            ppsHistory.shift();
+
+            const graph = document.getElementById('pps-graph');
+            graph.innerHTML = '';
+            ppsHistory.forEach(val => {
+                const bar = document.createElement('div');
+                bar.className = 'graph-bar';
+                bar.style.height = `${Math.min(100, val * 5)}%`;
+                graph.appendChild(bar);
+            });
+            msgCount = 0;
+
+            // Heartbeat
+            const diff = Date.now() - lastMsgTime;
+            document.getElementById('val-heartbeat').innerText = diff;
+
+            const hStatus = document.getElementById('heartbeat-status');
+            if (diff > 5000) {
+                hStatus.innerText = '⚠️ STREAM STALLED (BUFFER OVERFLOW / TIMEOUT)';
+                hStatus.style.color = 'var(--danger)';
+            } else if (diff > 1500) {
+                hStatus.innerText = '🐢 STREAM SLOW';
+                hStatus.style.color = 'var(--warning)';
+            } else {
+                hStatus.innerText = '⚡ STREAM ACTIVE';
+                hStatus.style.color = 'var(--success)';
+            }
+        }, 1000);
+
+        connect();
+    </script>
+</body>
+
+</html>

@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.76d] - 2024-12-24
+## [v0.77d] - 2024-12-24
+### Added
+- **Developer Tools**: Created "Meter-Stream Sniffer" (`/dev/meter_sniffer.html`). This external diagnostic tool monitors MIDI traffic density and detects stream dropouts (Heartbeat) to debug mixer buffer behavior.
+
+## [v0.76d] - 2024-12-24 (Previous)
 ### Added
 - **Developer Panel**: Added a safety warning for the "METER REFRESH RATE" setting. It warns about potential MIDI stream crashes and the necessary mixer restart if the interval is set too low.
 
