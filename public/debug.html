@@ -202,7 +202,10 @@
     </div>
 
     <script>
-        const ws = new WebSocket('ws://localhost:3007');
+        // Dynamic WebSocket URL - works from iPad/other devices
+        const wsUrl = `ws://${window.location.hostname}:3007`;
+        console.log('Connecting to WebSocket:', wsUrl);
+        const ws = new WebSocket(wsUrl);
         let paused = false;
         let stats = { total: 0, meters: 0, sysex: 0, meterRate: 0, changes: 0 };
         let lastMeterTime = Date.now();
