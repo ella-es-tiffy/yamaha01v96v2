@@ -458,10 +458,9 @@ class YamahaTouchRemote {
 
                             // HPF BINARY SWITCH LOGIC (Q=0)
                             if (band === 'low' && chObj && chObj.eq[band] && chObj.eq[band].q === 0) {
-                                // If HPF is active, any significant movement toggles between 0 and 127
-                                if (delta > 2) val = 127;
-                                else if (delta < -2) val = 0;
-                                else val = startVal; // No change if jump is too small
+                                // Strict Toggle: If 0, any move -> 127. If 127, any move -> 0.
+                                if (startVal < 64) val = 127;
+                                else val = 0;
                             }
                         }
 
@@ -484,12 +483,19 @@ class YamahaTouchRemote {
                                     }
                                 }
                             }
-                            // Store original gain if we enter Q=0
+                            // Store original gain if we enter Q=0, AND FORCE GAIN TO 0
                             if (knob.dataset.param === 'q' && val === 0 && startVal > 0) {
                                 const band = knob.dataset.band;
                                 const ch = this.selectedChannel;
                                 const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
                                 if (chObj) this.storedGains[`${ch}-${band}`] = chObj.eq[band].gain;
+
+                                // Explicitly force Gain to 0
+                                const gainKnob = document.getElementById(`enc-${band}-gain`);
+                                if (gainKnob) {
+                                    this.updateKnobUI(gainKnob, 0);
+                                    this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: 0 });
+                                }
                             }
                         }
                     }
@@ -513,7 +519,8 @@ class YamahaTouchRemote {
                     const ch = this.selectedChannel;
                     const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
                     if (chObj && chObj.eq.low.q === 0) {
-                        newVal = (e.deltaY < 0) ? 127 : 0;
+                        const current = this.getKnobMIDI(knob);
+                        newVal = (current < 64) ? 127 : 0;
                     }
                 }
 

@@ -1,6 +1,13 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.89d] - 2024-12-24
+## [v0.90d] - 2024-12-24
+### Changed
+- **EQ Section**: **HPF (Low Q=0) Logic Update**:
+  - Entering HPF mode (Q=0) now **forces** the Gain to 0 (OFF) immediately.
+  - While in HPF mode, the Gain knob acts as a **strict ON/OFF toggle**: Turning it moves it instantly between 0 (OFF) and 127 (+18dB). No intermediate values are possible.
+  - Leaving HPF mode restores the previous continuous gain value.
+
+## [v0.89d] - 2024-12-24 (Previous)
 ### Added
 - **EQ Section**: Implemented **Binary Gain Switch** for Low Band HPF. If HPF (Q=0) is active, the Gain knob can only be **OFF** (0) or **ON** (127 / +18dB). No intermediate values are allowed.
 ### Changed
