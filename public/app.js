@@ -196,6 +196,7 @@ class YamahaTouchRemote {
         // Bank Buttons
         document.querySelectorAll('.bank-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                document.getElementById('changelog-overlay').style.display = 'none';
                 document.querySelectorAll('.bank-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.currentBankStart = parseInt(btn.dataset.start);
@@ -262,6 +263,7 @@ class YamahaTouchRemote {
                 btn.classList.toggle('active', !currentState);
                 // We don't have a backend command for FX yet, but we toggle the UI
             } else if (selBtn) {
+                document.getElementById('changelog-overlay').style.display = 'none';
                 this.selectChannel(selBtn.dataset.ch);
             }
         });
@@ -293,12 +295,9 @@ class YamahaTouchRemote {
 
         document.getElementById('ver-btn')?.addEventListener('click', () => {
             const overlay = document.getElementById('changelog-overlay');
-            overlay.style.display = 'flex';
-            this.send('getChangelog', {});
-        });
-
-        document.getElementById('close-changelog')?.addEventListener('click', () => {
-            document.getElementById('changelog-overlay').style.display = 'none';
+            const isVisible = overlay.style.display === 'block';
+            overlay.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) this.send('getChangelog', {});
         });
 
         document.getElementById('sync-btn').addEventListener('click', (e) => {

@@ -1,5 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.64d] - 2024-12-24
+### Changed
+- **FX Animation**: Switched from sine to symmetric square-wave blink (0.5s on/off).
+- **Changelog UI**: Integrated directly under the menu bar. Full-width layout.
+- **UX Navigation**: Any bank or channel selection now automatically hides the changelog.
+
 ## [v0.63d] - 2024-12-24
 ### Added
 - New **Changelog Overlay**: A full-screen premium UI overlay to view the latest updates directly in the app.
