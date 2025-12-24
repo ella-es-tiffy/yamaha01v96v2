@@ -1,5 +1,9 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.80d] - 2024-12-24
+### Changed
+- **System**: Adjusted DEFAULT Meter Refresh Rate from 30s to **8s**. This addresses the 10-second timeout of the 01V96 mixer, ensuring the meter stream remains active without large gaps.
+
 ## [v0.78d] - 2024-12-24
 ### Fixed
 - **Server**: Fixed routing for the `/dev` folder. Static files inside `/dev` (like the Sniffer) are now correctly served, resolving the 404 error.

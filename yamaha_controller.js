@@ -9,7 +9,7 @@ class Yamaha01V96Controller {
         this.connected = false;
         this.onStateChange = null;
         this.onRawMidi = null;
-        this.meterConfig = { ms: 30000, start: 0, count: 32 };
+        this.meterConfig = { ms: 8000, start: 0, count: 32 };
 
         this.state = {
             selectedChannel: 1,
