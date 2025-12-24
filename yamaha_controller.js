@@ -183,6 +183,9 @@ class Yamaha01V96Controller {
                             ch.eq[band][type] = fVal;
                             changed = true;
                         }
+                    } else if (addrL === 0x0F) { // EQ On/Off
+                        ch.eqOn = (val === 1);
+                        changed = true;
                     }
                 }
             }
@@ -224,7 +227,9 @@ class Yamaha01V96Controller {
         } else {
             // Channel Fader: Element 0x1C, P1=0, P2=channel-1
             const chInt = parseInt(channel, 10);
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1C, 0x00, chInt - 1, ...dataBytes, 0xF7]);
+            const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1C, 0x00, chInt - 1, ...dataBytes, 0xF7];
+            this.output.sendMessage(msg);
+            if (this.onRawMidi) this.onRawMidi(msg, true);
         }
     }
 
@@ -290,17 +295,21 @@ class Yamaha01V96Controller {
     setPan(channel, value) {
         if (!this.connected) return;
 
-        // SysEx Parameter Change format for Pan
-        // Element 0x1B, P1=0x00, P2=channel-1
+        // Map UI (0-127) to Mixer (-63 to +63)
+        // Center (64) -> 0
+        const mixerVal = value - 64;
         const chIdx = parseInt(channel) - 1;
 
-        // Data: mixer sends 7F 7F 7F val, which is -1 sign-extended or similar.
-        // Usually just [0x00, 0x00, 0x00, val] also works, but let's match capture.
-        const dataBytes = [0x7F, 0x7F, 0x7F, value & 0x7F];
+        // Data format from log:
+        // Positive/Zero: 00 00 00 val
+        // Negative: 7F 7F 7F (128+val)
+        let dataBytes = [0x00, 0x00, 0x00, mixerVal & 0x7F];
+        if (mixerVal < 0) {
+            dataBytes = [0x7F, 0x7F, 0x7F, (128 + mixerVal) & 0x7F];
+        }
 
         this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1B, 0x00, chIdx, ...dataBytes, 0xF7]);
-
-        console.log(`↔️ Pan ${channel} -> ${value}`);
+        console.log(`↔️ Pan ${channel} -> ${mixerVal}`);
     }
 
     setEQOn(channel, isOn) {

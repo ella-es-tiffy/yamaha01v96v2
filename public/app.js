@@ -72,7 +72,7 @@ class YamahaTouchRemote {
             strip.innerHTML = `
                 <div class="ch-num">${i}</div>
                 <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
-                <div class="eq-button" id="eq-btn-${i}" data-ch="${i}">EQ</div>
+                <div class="eq-button ${chState?.eqOn ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
                 <div class="pan-area">
                     <div class="value-display pan-val" id="val-pan-${i}">--</div>
@@ -213,10 +213,19 @@ class YamahaTouchRemote {
                 this.send('setMute', { channel: ch, value: !isMuted });
             } else if (e.target.closest('.eq-button')) {
                 const btn = e.target.closest('.eq-button');
-                const ch = btn.dataset.ch;
-                const isActive = btn.classList.contains('active');
-                btn.classList.toggle('active', !isActive);
-                this.send('setEQOn', { channel: ch, value: !isActive });
+                const ch = parseInt(btn.dataset.ch);
+                const chIdx = ch - 1;
+
+                // Toggle state locally
+                const currentState = this.state.channels[chIdx]?.eqOn || false;
+                const newState = !currentState;
+
+                if (this.state.channels[chIdx]) {
+                    this.state.channels[chIdx].eqOn = newState;
+                }
+
+                btn.classList.toggle('active', newState);
+                this.send('setEQOn', { channel: ch, value: newState });
             } else if (selBtn) {
                 this.selectChannel(selBtn.dataset.ch);
             }
