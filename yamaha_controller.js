@@ -78,31 +78,11 @@ class Yamaha01V96Controller {
 
     async requestInitialState() {
         if (!this.connected) return;
-        console.log('📥 Starting Throttled Deep Sync (Bulk Dump Request & Scan)...');
-
-        // 1. Send "Universal Bulk Dump" Request (Anfangssequenz erarbeitet)
-        // Format: F0 43 20 3E 0E 00 F7 (Based on previous analysis)
-        this.output.sendMessage([0xF0, 0x43, 0x20, 0x3E, 0x0E, 0x00, 0xF7]);
-
-        await new Promise(r => setTimeout(r, 100));
-
-        // 2. Fallback Scan (Faders & Mutes) just in case Bulk Dump parsing isn't fully covered
-        const params = [0x1C, 0x1A]; // Fader, Mute
-
-        // Scan Input Channels 1-32
-        for (let channel = 0; channel < 32; channel++) {
-            for (const addr of params) {
-                // Request Param: [F0 43 30 3E 7F 01 Area AddrH AddrM AddrL F7]
-                this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, 0x01, 0x00, channel, addr, 0xF7]);
-                await new Promise(r => setTimeout(r, 5));
-            }
-        }
-
-        // Master Fader & Mute (Area 0x00)
-        this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, 0x00, 0x4F, 0x00, 0x00, 0xF7]);
-        this.output.sendMessage([0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, 0x00, 0x4D, 0x00, 0x00, 0xF7]);
-
-        console.log('✅ Deep Sync Requests Sent.');
+        console.log('📥 Skipping Deep Sync - Mixer does not respond to parameter requests');
+        // The 01V96 does not respond to parameter request SysEx messages.
+        // It only sends live updates when controls are physically moved.
+        // Therefore, initial sync is not possible via MIDI.
+        // Faders will update as soon as they are moved on the mixer.
     }
 
     handleMidiMessage(deltaTime, message) {

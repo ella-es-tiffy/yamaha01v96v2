@@ -10,6 +10,7 @@ class YamahaTouchRemote {
         this.selectedChannel = 1;
         this.currentBankStart = 1;
         this.activeKnob = null;
+        this.activeFader = null; // Track which fader is being actively moved
 
         this.state = {
             channels: Array(32).fill(null).map((_, i) => ({
@@ -171,11 +172,17 @@ class YamahaTouchRemote {
             if (thumb) {
                 const area = thumb.closest('.fader-area');
                 const chId = area.dataset.ch;
+                this.activeFader = chId; // Mark this fader as active
                 thumb.setPointerCapture(e.pointerId);
                 thumb.classList.add('dragging');
                 handlePointer(e, area, chId);
                 const onMove = (me) => { if (thumb.hasPointerCapture(me.pointerId)) handlePointer(me, area, chId); };
-                const onUp = () => { thumb.releasePointerCapture(e.pointerId); thumb.classList.remove('dragging'); thumb.removeEventListener('pointermove', onMove); };
+                const onUp = () => {
+                    this.activeFader = null; // Clear active fader
+                    thumb.releasePointerCapture(e.pointerId);
+                    thumb.classList.remove('dragging');
+                    thumb.removeEventListener('pointermove', onMove);
+                };
                 thumb.addEventListener('pointermove', onMove);
                 thumb.addEventListener('pointerup', onUp, { once: true });
             } else if (onBtn) {
@@ -350,6 +357,9 @@ class YamahaTouchRemote {
     getKnobMIDI(knobEl) { return parseInt(knobEl.dataset.midi) || 64; }
 
     updateFaderUI(id, value) {
+        // Don't update if user is actively moving this fader
+        if (this.activeFader === id) return;
+
         const thumb = document.getElementById(`thumb-${id}`);
         if (!thumb) return;
         const container = thumb.closest('.fader-area');
