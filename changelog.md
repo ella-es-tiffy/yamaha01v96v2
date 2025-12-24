@@ -1,5 +1,12 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.73d] - 2024-12-24
+### Added
+- **Menu Bar**: Replaced "VIEW HEX" button with a cleaner gear icon (⚙️).
+### Fixed
+- **EQ Section**: Fixed channel selection display ("CH SELECT") which was not updating correctly.
+- **UI Design**: Redesigned EQ header for better readability: bold **EQ [CH]** followed by a thin-styled 4-Band Parametric EQ label.
+
 ## [v0.71d] - 2024-12-24
 ### Changed
 - **Fader Section**: Slowed down FX button square-wave blink from 1s to 4s (2s ON / 2s OFF) for a very calm visual presence.

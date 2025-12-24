@@ -107,12 +107,12 @@ class YamahaTouchRemote {
         if (!eqArea) return;
 
         eqArea.innerHTML = `
-            <div style="font-weight: bold; padding: 4px 10px; color: #888; font-size: 0.65rem; text-align: left; background: rgba(255,255,255,0.02); margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="opacity: 0.6; font-size: 0.5rem; letter-spacing: 1px;">CH SELECT:</span>
-                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(0,210,255,0.3);">1</span>
+            <div style="padding: 4px 10px; color: #888; background: rgba(255,255,255,0.02); margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: baseline; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; align-items: baseline; gap: 6px;">
+                    <span style="color: #fff; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px;">EQ</span>
+                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 800; font-size: 1.2rem; text-shadow: 0 0 10px rgba(0,210,255,0.3);">${this.selectedChannel}</span>
                 </div>
-                <span style="color: #444; font-size: 0.5rem; letter-spacing: 1px; font-weight: 900;">4-BAND P-EQ</span>
+                <span style="color: #444; font-size: 0.55rem; letter-spacing: 0.5px; font-weight: 300; text-transform: uppercase;">4-Band Parametric EQ</span>
             </div>
             <div class="eq-header" style="margin-bottom: 0; opacity: 0.3;">
                 <div></div>
@@ -329,7 +329,6 @@ class YamahaTouchRemote {
 
         document.getElementById('debug-ui-btn')?.addEventListener('click', (e) => {
             this.debugUI = !this.debugUI;
-            e.target.innerText = this.debugUI ? 'HIDE HEX' : 'VIEW HEX';
             e.target.style.background = this.debugUI ? 'var(--accent)' : '#333';
             e.target.style.color = this.debugUI ? '#000' : '#fff';
 
@@ -431,6 +430,7 @@ class YamahaTouchRemote {
 
         this.renderMixer();
         this.renderEQ();
+        this.updateSelectionUI();
         this.syncEQToSelected();
     }
 
