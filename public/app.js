@@ -13,6 +13,7 @@ class YamahaTouchRemote {
         this.activeFader = null; // Track which fader is being actively moved
         this.debugUI = false; // Toggle for hex values/addresses
         this.meterOffset = 0; // Noise gate for meters
+        this.meterBankOnly = false; // ECO Mode: Only visible 8 ch
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
@@ -202,6 +203,7 @@ class YamahaTouchRemote {
                 btn.classList.add('active');
                 this.currentBankStart = parseInt(btn.dataset.start);
                 this.renderMixer();
+                if (this.meterBankOnly) this.triggerMeterSync();
             });
         });
 
@@ -368,6 +370,11 @@ class YamahaTouchRemote {
         document.getElementById('refresh-meters')?.addEventListener('click', () => {
             console.log('🔄 Manually requesting meters...');
             this.send('sync', { type: 'meters' }); // Specific meter sync if supported, otherwise full
+        });
+
+        document.getElementById('dbg-bank-meters')?.addEventListener('change', (e) => {
+            this.meterBankOnly = e.target.checked;
+            this.triggerMeterSync();
         });
 
         document.getElementById('copy-debug')?.addEventListener('click', () => {
@@ -708,6 +715,13 @@ class YamahaTouchRemote {
                 }
             });
         });
+    }
+
+    triggerMeterSync() {
+        const start = this.meterBankOnly ? (this.currentBankStart - 1) : 0;
+        const count = this.meterBankOnly ? 8 : 32;
+        console.log(`📡 Meter Range Update: ${start} - ${start + count}`);
+        this.send('setMeterInterval', { range: { start, count } });
     }
 
     send(type, payload) {

@@ -9,6 +9,7 @@ class Yamaha01V96Controller {
         this.connected = false;
         this.onStateChange = null;
         this.onRawMidi = null;
+        this.meterConfig = { ms: 30000, start: 0, count: 32 };
 
         this.state = {
             selectedChannel: 1,
@@ -36,27 +37,35 @@ class Yamaha01V96Controller {
         };
     }
 
-    startMetering(ms = 30000) {
+    startMetering(ms, start, count) {
+        if (ms !== undefined) this.meterConfig.ms = ms;
+        if (start !== undefined) this.meterConfig.start = start;
+        if (count !== undefined) this.meterConfig.count = count;
+
         if (this.meterInterval) clearInterval(this.meterInterval);
 
-        const meterRequest = [0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00, 0x00, 0x00, 0x00, 32, 0xF7];
+        // Packet: F0 43 3n 3E 0D 21 [Grp] [IdxH] [IdxM] [IdxL] [Count] F7
+        const meterRequest = [
+            0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00,
+            0x00, 0x00, this.meterConfig.start,
+            this.meterConfig.count, 0xF7
+        ];
 
         if (this.connected) {
             this.output.sendMessage(meterRequest);
-            console.log(`📊 Remote Metering active (${ms}ms refreshes)`);
+            console.log(`📊 Metering Active: Ch ${this.meterConfig.start + 1}-${this.meterConfig.start + this.meterConfig.count} (${this.meterConfig.ms}ms)`);
         }
 
         this.meterInterval = setInterval(() => {
-            if (this.connected) {
-                this.output.sendMessage(meterRequest);
-            }
-        }, ms);
+            if (this.connected) this.output.sendMessage(meterRequest);
+        }, this.meterConfig.ms);
     }
 
-    setMeterInterval(ms) {
-        const safeMs = Math.max(1000, ms); // Protect mixer from spam (Min 1s)
-        console.log(`🛡️  Setting Meter Refresh Rate to ${safeMs}ms`);
-        this.startMetering(safeMs);
+    setMeterInterval(ms, range) {
+        const safeMs = ms ? Math.max(1000, ms) : this.meterConfig.ms;
+        const start = range ? range.start : this.meterConfig.start;
+        const count = range ? range.count : this.meterConfig.count;
+        this.startMetering(safeMs, start, count);
     }
 
     connect() {
@@ -109,15 +118,26 @@ class Yamaha01V96Controller {
         let changed = false;
         let meterChanged = false;
 
-        // METER DATA PARSING
-        if (message.length >= 70 && message[0] === 0xF0 && message[1] === 0x43 && message[5] === 0x21) {
-            for (let i = 0; i < 32; i++) {
+        // METER DATA PARSING (Universal for varied ranges)
+        if (message[0] === 0xF0 && message[1] === 0x43 && message[5] === 0x21) {
+            const startIdx = message[8]; // Extract starting channel from packet
+            const dataLen = (message.length - 11) / 2; // Data is between address and F7
+
+            for (let i = 0; i < dataLen; i++) {
                 const val = message[9 + (i * 2)];
-                if (this.state.channels[i]) this.state.channels[i].meter = val || 0;
+                const chMapIdx = startIdx + i;
+                if (this.state.channels[chMapIdx]) {
+                    this.state.channels[chMapIdx].meter = val || 0;
+                }
             }
-            const masterL = message[9 + (48 * 2)] || 0;
-            const masterR = message[9 + (49 * 2)] || 0;
-            this.state.master.meter = Math.max(masterL, masterR);
+
+            // Handle Master separately - usually at a high index or separate group
+            // For now, we only update master if the packet is the "Full" 32-ch one or larger
+            if (message.length > 100) {
+                const masterL = message[9 + (48 * 2)] || 0;
+                const masterR = message[9 + (49 * 2)] || 0;
+                this.state.master.meter = Math.max(masterL, masterR);
+            }
             meterChanged = true;
         }
 
