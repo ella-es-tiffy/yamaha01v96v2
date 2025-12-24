@@ -30,8 +30,6 @@ class Yamaha01V96Controller {
     startMetering() {
         if (this.meterInterval) clearInterval(this.meterInterval);
 
-        // KRYOPS FORMAT: F0 43 30 3E 0D 21 00 00 00 00 32 F7
-        // Send IMMEDIATELY on start, then every 10 seconds
         const meterRequest = [0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00, 0x00, 0x00, 0x00, 32, 0xF7];
 
         if (this.connected) {
@@ -192,26 +190,22 @@ class Yamaha01V96Controller {
             return;
         }
 
-        let chInt = channel;
-        if (channel !== 'master') chInt = parseInt(channel, 10);
-
-        const v = Math.round(value);
+        const v = Math.round(value); // 0-1023
         console.log(`🎚️ SetFader ${channel} -> ${v}`);
 
+        // SysEx Parameter Change format (kryops style)
+        // F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7
+        // Element: 1C (Channel Fader), 4F (Master Fader)
+        // Data: 4 bytes for 10-bit value: 00 00 (v>>7) (v&0x7F)
+        const dataBytes = [0x00, 0x00, (v >> 7) & 0x7F, v & 0x7F];
+
         if (channel === 'master') {
-            // Master Fader based on Logs:
-            // Status B0, CC 1E (30) MSB, CC 3E (62) LSB.
-            // 14-bit Value Scaling: UI (0-1023) -> MIDI 14-bit
-            const val14bit = v * 16;
-            this.output.sendMessage([0xB0, 0x1E, (val14bit >> 7) & 0x7F]);
-            // this.output.sendMessage([0xB0, 0x3E, val14bit & 0x7F]); // Disable LSB if needed
+            // Master Fader: Element 0x4F, P1=0, P2=0
+            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x4F, 0x00, 0x00, ...dataBytes, 0xF7]);
         } else {
-            // Fader for Ch1-32 based on User Logs:
-            // Status B0 (Ch1), CC MSB = Channel, CC LSB = Channel + 32
-            // 14-bit Value Scaling
-            const val14bit = v * 16;
-            const msbCC = chInt;
-            this.output.sendMessage([0xB0, msbCC, (val14bit >> 7) & 0x7F]);
+            // Channel Fader: Element 0x1C, P1=0, P2=channel-1
+            const chInt = parseInt(channel, 10);
+            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1C, 0x00, chInt - 1, ...dataBytes, 0xF7]);
         }
     }
 
@@ -221,22 +215,20 @@ class Yamaha01V96Controller {
             return;
         }
 
-        let chInt = channel;
-        if (channel !== 'master') chInt = parseInt(channel, 10);
+        console.log(`🚫 SetMute ${channel} -> ${isMuted}`);
 
-        // Logs: Mute ON (Silence) -> 00, Mute OFF (Sound) -> 7F
-        const v = isMuted ? 0x00 : 0x7F;
-        console.log(`🚫 SetMute ${channel} -> ${isMuted} (send ${v})`);
+        // SysEx Parameter Change format (kryops style)
+        // Element: 1A (Channel On/Mute), 4D (Master On/Mute)
+        // Data: 4 bytes: 00 00 00 (on?1:0) where on=!muted
+        const dataBytes = [0x00, 0x00, 0x00, isMuted ? 0 : 1];
 
         if (channel === 'master') {
-            // Master Mute based on Logs:
-            // Status B1 (Ch2), CC 1E (30).
-            this.output.sendMessage([0xB1, 0x1E, v]);
+            // Master On/Mute: Element 0x4D
+            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x4D, 0x00, 0x00, ...dataBytes, 0xF7]);
         } else {
-            // Mute for Ch1-32 based on User Logs:
-            // Status B0, CC = 63 + Channel
-            const cc = 63 + chInt;
-            this.output.sendMessage([0xB0, cc, v]);
+            // Channel On/Mute: Element 0x1A
+            const chInt = parseInt(channel, 10);
+            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1A, 0x00, chInt - 1, ...dataBytes, 0xF7]);
         }
     }
 

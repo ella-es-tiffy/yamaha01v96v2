@@ -357,9 +357,6 @@ class YamahaTouchRemote {
     getKnobMIDI(knobEl) { return parseInt(knobEl.dataset.midi) || 64; }
 
     updateFaderUI(id, value) {
-        // Don't update if user is actively moving this fader
-        if (this.activeFader === id) return;
-
         const thumb = document.getElementById(`thumb-${id}`);
         if (!thumb) return;
         const container = thumb.closest('.fader-area');

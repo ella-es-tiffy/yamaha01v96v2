@@ -298,6 +298,9 @@ header {
     right: 14px;
     bottom: 0;
     overflow: hidden;
+    z-index: 1;
+    pointer-events: none;
+    /* Allow clicks to pass through to fader */
 }
 
 .meter-fill {
@@ -323,6 +326,7 @@ header {
     display: flex;
     justify-content: center;
     top: 50%;
+    z-index: 10;
     /* Default */
 }
 
