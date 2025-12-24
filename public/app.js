@@ -424,6 +424,19 @@ class YamahaTouchRemote {
 
                 this.syncFaders();
                 this.syncEQToSelected();
+            } else if (data.type === 'meters') {
+                // Update only meters, don't touch faders
+                for (let i = 0; i < 32; i++) {
+                    if (this.state.channels[i]) {
+                        this.state.channels[i].meter = data.data.channels[i] || 0;
+                    }
+                }
+                this.state.master.meter = data.data.master || 0;
+                // Update meter UI only
+                const end = Math.min(32, this.currentBankStart + 7);
+                for (let i = this.currentBankStart; i <= end; i++) {
+                    this.updateMeterUI(i, this.state.channels[i - 1].meter);
+                }
             } else if (data.type === 'midiLog') {
                 this.logMidi(data.data);
             }

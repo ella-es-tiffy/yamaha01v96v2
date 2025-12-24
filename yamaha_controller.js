@@ -90,6 +90,7 @@ class Yamaha01V96Controller {
         const data1 = message[1];
         const data2 = message[2];
         let changed = false;
+        let meterChanged = false;
 
         // METER DATA PARSING
         // Accepts both device IDs (43 10 and 43 30)
@@ -103,7 +104,7 @@ class Yamaha01V96Controller {
                 }
             }
             this.state.master.meter = message[9 + (32 * 2)] || 0;
-            changed = true;
+            meterChanged = true; // Don't trigger full state change for meters
         }
 
 
@@ -177,6 +178,11 @@ class Yamaha01V96Controller {
                 if (addrH === 0x4F) { this.state.master.fader = val; changed = true; }
                 else if (addrH === 0x4D) { this.state.master.mute = (val === 0); changed = true; }
             }
+        }
+
+        // Separate callbacks for meters vs other state changes
+        if (meterChanged && this.onMeterChange) {
+            this.onMeterChange(this.state);
         }
 
         if (changed && this.onStateChange) {

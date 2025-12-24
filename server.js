@@ -10,6 +10,15 @@ yamaha.onStateChange = (state) => {
     broadcast({ type: 'state', data: state });
 };
 
+yamaha.onMeterChange = (state) => {
+    // Only broadcast meter values, not full state
+    const meterData = {
+        channels: state.channels.map(ch => ch.meter),
+        master: state.master.meter
+    };
+    broadcast({ type: 'meters', data: meterData });
+};
+
 yamaha.onRawMidi = (msg) => {
     broadcast({ type: 'midiLog', data: Array.from(msg) });
 };
