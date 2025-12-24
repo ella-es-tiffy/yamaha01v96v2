@@ -508,10 +508,11 @@ class YamahaTouchRemote {
             const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
             if (chObj && chObj.eq[band]) {
                 const qVal = chObj.eq[band].q;
+                // HPF (Low Q=0) and LPF (High Q=0) force Gain to OFF
                 const isFilter = (band === 'low' && qVal === 0) || (band === 'high' && qVal === 0);
                 if (isFilter) {
                     forceOff = true;
-                    visualVal = 0; // Snap visual to far left
+                    visualVal = 0; // Visual minimum
                 }
             }
         }

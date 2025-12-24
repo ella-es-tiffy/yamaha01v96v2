@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.81d] - 2024-12-24
+## [v0.83d] - 2024-12-24
+### Changed
+- **EQ Section**: Refined Filter-Gain interaction. When Low (HPF) or High (LPF) bands are in filter mode, the Gain knob now correctly snaps to "OFF" and forces the UI encoder to the minimum position to match hardware logic.
+
+## [v0.82d] - 2024-12-24 (Previous)
 ### Added
 - **EQ Section**: Implemented real-world value mapping for knobs. Gain now shows dB (-18 to +18) with an "OFF" state at minimum. Frequency uses a logarithmic scale (20Hz to 20kHz). Q display includes hardware-accurate labels like HPF, LPF, and Shelves.
 
