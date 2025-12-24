@@ -515,8 +515,37 @@ class YamahaTouchRemote {
                 if (val === 64) valEl.innerText = `CENTER${hexLabel}`;
                 else if (val < 64) valEl.innerText = `L${64 - val}${hexLabel}`;
                 else valEl.innerText = `R${val - 64}${hexLabel}`;
+            } else if (knobEl.id.startsWith('enc-')) {
+                // EQ VALUE MAPPING
+                const parts = knobEl.id.split('-');
+                const band = parts[1];
+                const param = parts[2];
+                const hexLabel = this.debugUI ? ` [${hex}]` : '';
+                let display = hex;
+
+                if (param === 'gain') {
+                    if (val === 0) display = 'OFF';
+                    else {
+                        const dB = ((val / 127) * 36 - 18).toFixed(1);
+                        display = (dB > 0 ? '+' : '') + dB + ' dB';
+                    }
+                } else if (param === 'freq') {
+                    const freq = 21.2 * Math.pow(20000 / 21.2, val / 127);
+                    display = freq >= 1000 ? (freq / 1000).toFixed(2) + ' kHz' : Math.round(freq) + ' Hz';
+                } else if (param === 'q') {
+                    if (band === 'low' && val === 0) display = 'HPF';
+                    else if (band === 'low' && val === 127) display = 'L.SHLF';
+                    else if (band === 'high' && val === 127) display = 'H.SHLF';
+                    else if (band === 'high' && val === 0) display = 'LPF';
+                    else {
+                        // Q Mapping: 1=10.0, 126=0.10
+                        const qVal = (10 - (val / 127) * 9.9).toFixed(2);
+                        display = qVal;
+                    }
+                }
+                valEl.innerText = display + hexLabel;
             } else {
-                // DEFAULT HEX (EQ, etc) - No 'h' suffix
+                // DEFAULT HEX
                 valEl.innerText = hex;
             }
         }

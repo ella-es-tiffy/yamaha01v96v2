@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.80d] - 2024-12-24
+## [v0.81d] - 2024-12-24
+### Added
+- **EQ Section**: Implemented real-world value mapping for knobs. Gain now shows dB (-18 to +18) with an "OFF" state at minimum. Frequency uses a logarithmic scale (20Hz to 20kHz). Q display includes hardware-accurate labels like HPF, LPF, and Shelves.
+
+## [v0.80d] - 2024-12-24 (Previous)
 ### Changed
 - **System**: Adjusted DEFAULT Meter Refresh Rate from 30s to **8s**. This addresses the 10-second timeout of the 01V96 mixer, ensuring the meter stream remains active without large gaps.
 
