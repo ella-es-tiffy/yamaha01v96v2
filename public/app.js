@@ -632,7 +632,7 @@ class YamahaTouchRemote {
             } else if (isEQ) {
                 let display = hex;
                 if (param === 'gain') {
-                    if (band === 'low' && (val === 0 || forceOff)) display = 'OFF';
+                    if (band === 'low' && forceOff) display = 'OFF';
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';

@@ -1,6 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.87d] - 2024-12-24
+## [v0.88d] - 2024-12-24
+### Fixed
+- **EQ Section**: Refined **Low Band Gain** OFF-logic. It now only displays "OFF" if the shelf/filter is set to **HPF** (Q=0).
+- **EQ Section**: If the Low Band is in Parametric or Shelf mode (Q > 0), the minimum gain position now correctly shows **-18.0 dB** instead of "OFF".
+
+## [v0.87d] - 2024-12-24 (Previous)
 ### Fixed
 - **EQ Section**: Removed 'OFF' and 'Snap' logic for the **HIGH** band gain (B8 21). This band now remains fully manual and visible, as requested.
 - **EQ Section**: The HPF (Low band Q=0) snap and restore logic remains active, but is now strictly limited to the Low band.
