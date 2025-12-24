@@ -11,6 +11,7 @@ class YamahaTouchRemote {
         this.currentBankStart = 1;
         this.activeKnob = null;
         this.activeFader = null; // Track which fader is being actively moved
+        this.debugUI = false; // Toggle for hex values/addresses
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
@@ -71,6 +72,7 @@ class YamahaTouchRemote {
 
             strip.innerHTML = `
                 <div class="ch-num">${i}</div>
+                <div class="fx-button" id="fx-btn-${i}" data-ch="${i}">FX</div>
                 <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
                 <div class="eq-button ${chState?.eqOn ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
@@ -103,12 +105,19 @@ class YamahaTouchRemote {
         if (!eqArea) return;
 
         eqArea.innerHTML = `
-            <div style="font-weight: bold; padding: 8px 12px; color: #aaa; font-size: 0.75rem; text-align: left; background: rgba(255,255,255,0.05); margin-bottom: 20px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="font-weight: bold; padding: 4px 10px; color: #888; font-size: 0.65rem; text-align: left; background: rgba(255,255,255,0.02); margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05);">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="opacity: 0.6; font-size: 0.6rem; letter-spacing: 1px;">CHANNEL SELECT:</span>
-                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 800; font-size: 1.1rem; text-shadow: 0 0 10px rgba(0,210,255,0.3);">1</span>
+                    <span style="opacity: 0.6; font-size: 0.5rem; letter-spacing: 1px;">CH SELECT:</span>
+                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 800; font-size: 1rem; text-shadow: 0 0 10px rgba(0,210,255,0.3);">1</span>
                 </div>
-                <span style="color: #666; font-size: 0.6rem; letter-spacing: 1px; font-weight: 900;">4-BAND PARAMETRIC EQ</span>
+                <span style="color: #444; font-size: 0.5rem; letter-spacing: 1px; font-weight: 900;">4-BAND P-EQ</span>
+            </div>
+            <div class="eq-header" style="margin-bottom: 0; opacity: 0.3;">
+                <div></div>
+                <div class="eq-column-header">1</div>
+                <div class="eq-column-header">2</div>
+                <div class="eq-column-header">3</div>
+                <div class="eq-column-header">4</div>
             </div>
             <div class="eq-header">
                 <div></div> <!-- Spacer for Label Col -->
@@ -139,9 +148,9 @@ class YamahaTouchRemote {
                 const cell = document.createElement('div');
                 cell.className = 'knob-container';
                 cell.innerHTML = `
-                    <div class="value-display" id="val-${id}">--</div>
-                    <div class="knob-addr" id="addr-${id}">-- --</div>
-                    <svg class="knob-svg" id="${id}" viewBox="0 0 60 60" data-band="${band}" data-param="${row.id}">
+                    <div class="knob-addr" id="addr-${id}" style="${this.debugUI ? '' : 'display:none;'}">-- --</div>
+                    <div class="value-display" id="val-${id}" style="${this.debugUI ? '' : 'display:none;'}">--</div>
+                    <svg class="knob-svg eq-knob" id="${id}" viewBox="0 0 60 60" data-band="${band}" data-param="${row.id}">
                         <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
                         <path id="ring-${id}" d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-active" stroke-linecap="round" stroke-dasharray="120" stroke-dashoffset="120" />
                         <circle cx="30" cy="30" r="20" class="knob-circle"></circle>
@@ -292,6 +301,14 @@ class YamahaTouchRemote {
         document.getElementById('debug-btn').addEventListener('click', () => {
             const l = document.getElementById('debug-log');
             l.style.display = l.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.getElementById('debug-ui-btn')?.addEventListener('click', (e) => {
+            this.debugUI = !this.debugUI;
+            e.target.innerText = this.debugUI ? 'HIDE HEX' : 'VIEW HEX';
+            e.target.style.background = this.debugUI ? 'var(--accent)' : '#333';
+            e.target.style.color = this.debugUI ? '#000' : '#fff';
+            this.renderEQ();
         });
 
         document.getElementById('copy-debug')?.addEventListener('click', () => {

@@ -18,7 +18,7 @@
                 <span class="brand">YAMAHA</span>
                 <span class="model">01V96 PRO TOUCH</span>
                 <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.51d</span>
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.53d</span>
             </div>
             <div class="header-right">
                 <div class="bank-selector" style="display: flex; gap: 4px; margin-right: 15px;">
@@ -31,8 +31,11 @@
                 <button id="sync-btn" class="action-btn sync-btn">
                     ↻ FULL BULK SYNC
                 </button>
+                <button id="debug-ui-btn"
+                    style="background: #333; color: white; border: 1px solid #555; border-radius: 4px; padding: 6px; font-size: 0.7rem; cursor: pointer; margin-right: 5px;">VIEW
+                    HEX</button>
                 <button id="debug-btn"
-                    style="background: #333; color: white; border: 1px solid #555; border-radius: 4px; padding: 6px; font-size: 0.7rem; cursor: pointer;">BUG</button>
+                    style="background: #333; color: white; border: 1px solid #555; border-radius: 4px; padding: 6px; font-size: 0.7rem; cursor: pointer;">LOG</button>
                 <div id="status" style="font-size: 0.7rem; color: #888;">Verbinde...</div>
             </div>
         </header>
@@ -61,8 +64,10 @@
 
             <div class="master-section">
                 <div class="channel-strip master-strip" id="ch-master">
-                    <div class="ch-num">MASTER</div>
+                    <div class="ch-num">&nbsp;</div>
+                    <div class="fx-button" id="fx-master" data-ch="master">FX</div>
                     <div class="on-button active" id="btn-master" data-ch="master">ON</div>
+                    <div class="eq-button" id="eq-master" data-ch="master">EQ</div>
                     <button class="sel-button" id="sel-master" data-ch="master">SEL</button>
                     <div class="fader-area" id="slot-master" data-ch="master">
                         <div class="fader-track">
