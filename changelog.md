@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.74d] - 2024-12-24
+## [v0.75d] - 2024-12-24
+### Changed
+- **EQ Section**: Refined Header design. Large, high-contrast **EQ [CH]** indicator and a very thin, letter-spaced "4-Band Parametric Equalizer" sub-label for a more premium hardware look.
+
+## [v0.74d] - 2024-12-24 (Previous)
 ### Added
 - **Developer Panel**: Added "METER REFRESH RATE" slider (1s - 60s). This control allows manual adjustment of the meter request interval to fix lagginess/stream dropouts.
 ### Fixed

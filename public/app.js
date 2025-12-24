@@ -107,12 +107,12 @@ class YamahaTouchRemote {
         if (!eqArea) return;
 
         eqArea.innerHTML = `
-            <div style="padding: 4px 10px; color: #888; background: rgba(255,255,255,0.02); margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: baseline; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; align-items: baseline; gap: 6px;">
-                    <span style="color: #fff; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px;">EQ</span>
-                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 800; font-size: 1.2rem; text-shadow: 0 0 10px rgba(0,210,255,0.3);">${this.selectedChannel}</span>
+            <div style="padding: 0 5px 10px 5px; display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #222; margin-bottom: 12px;">
+                <div style="display: flex; align-items: baseline; gap: 8px;">
+                    <span style="color: #666; font-weight: 900; font-size: 0.8rem; letter-spacing: 1px;">EQ</span>
+                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 900; font-size: 1.6rem; text-shadow: 0 0 10px rgba(0,210,255,0.4); line-height: 1;">${this.selectedChannel}</span>
                 </div>
-                <span style="color: #444; font-size: 0.55rem; letter-spacing: 0.5px; font-weight: 300; text-transform: uppercase;">4-Band Parametric EQ</span>
+                <span style="color: #444; font-size: 0.5rem; letter-spacing: 2px; font-weight: 300; text-transform: uppercase;">4-Band Parametric Equalizer</span>
             </div>
             <div class="eq-header" style="margin-bottom: 0; opacity: 0.3;">
                 <div></div>
