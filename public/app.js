@@ -15,14 +15,14 @@ class YamahaTouchRemote {
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
-                fader: 0, mute: false, pan: 64, name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`, eq: {
+                fader: 0, mute: false, pan: 64, fxOn: false, name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`, eq: {
                     low: { q: 64, freq: 64, gain: 64 },
                     lmid: { q: 64, freq: 64, gain: 64 },
                     hmid: { q: 64, freq: 64, gain: 64 },
                     high: { q: 64, freq: 64, gain: 64 }
                 }
             })),
-            master: { fader: 0, mute: false }
+            master: { fader: 0, mute: false, fxOn: false }
         };
 
         this.init();
@@ -72,7 +72,7 @@ class YamahaTouchRemote {
 
             strip.innerHTML = `
                 <div class="ch-num">${i}</div>
-                <div class="fx-button" id="fx-btn-${i}" data-ch="${i}">FX</div>
+                <div class="fx-button ${chState?.fxOn ? 'active' : ''}" id="fx-btn-${i}" data-ch="${i}">FX</div>
                 <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
                 <div class="eq-button ${chState?.eqOn ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
@@ -244,6 +244,22 @@ class YamahaTouchRemote {
 
                 btn.classList.toggle('active', newState);
                 this.send('setEQOn', { channel: ch, value: newState });
+            } else if (e.target.closest('.fx-button')) {
+                const btn = e.target.closest('.fx-button');
+                const ch = btn.dataset.ch;
+                const chIdx = (ch === 'master') ? 'master' : parseInt(ch) - 1;
+
+                let currentState;
+                if (chIdx === 'master') {
+                    currentState = this.state.master.fxOn || false;
+                    this.state.master.fxOn = !currentState;
+                } else {
+                    currentState = this.state.channels[chIdx]?.fxOn || false;
+                    this.state.channels[chIdx].fxOn = !currentState;
+                }
+
+                btn.classList.toggle('active', !currentState);
+                // We don't have a backend command for FX yet, but we toggle the UI
             } else if (selBtn) {
                 this.selectChannel(selBtn.dataset.ch);
             }
