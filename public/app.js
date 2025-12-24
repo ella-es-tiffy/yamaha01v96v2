@@ -685,7 +685,10 @@ class YamahaTouchRemote {
         }
     }
 
-    getKnobMIDI(knobEl) { return parseInt(knobEl.dataset.midi) || 64; }
+    getKnobMIDI(knobEl) {
+        const val = parseInt(knobEl.dataset.midi);
+        return isNaN(val) ? 64 : val;
+    }
 
     updatePanUI(id, value) {
         const knob = document.getElementById(`pan-${id}`);

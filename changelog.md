@@ -1,6 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.91d] - 2024-12-24
+## [v0.92d] - 2024-12-24
+### Fixed
+- **Core UI**: Fixed a critical bug where **encoders starting at 0** were incorrectly treated as missing values and defaulted to 64 (Center), causing them to "jump" to the middle on the first touch.
+- **Core UI**: This ensures that when a value is OFF (0), it correctly stays at 0 when you start interacting with it, allowing for smooth fine adjustments from the minimum value.
+
+## [v0.91d] - 2024-12-24 (Previous)
 ### Changed
 - **EQ Section**: **Directional Toggle Logic** for HPF Gain:
   - If Gain is **OFF (0)**: Turning the knob **UP** snaps it to **ON (127)**. Turning it DOWN (further left) keeps it OFF.
