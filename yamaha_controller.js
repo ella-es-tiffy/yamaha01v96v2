@@ -36,22 +36,27 @@ class Yamaha01V96Controller {
         };
     }
 
-    startMetering() {
+    startMetering(ms = 30000) {
         if (this.meterInterval) clearInterval(this.meterInterval);
 
         const meterRequest = [0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00, 0x00, 0x00, 0x00, 32, 0xF7];
 
         if (this.connected) {
             this.output.sendMessage(meterRequest);
-            console.log('📊 Sent initial Remote Meter Request');
+            console.log(`📊 Remote Metering active (${ms}ms refreshes)`);
         }
 
-        // Increased to 30s for stability (kryops used 10s, but causes freezes)
         this.meterInterval = setInterval(() => {
             if (this.connected) {
                 this.output.sendMessage(meterRequest);
             }
-        }, 30000);
+        }, ms);
+    }
+
+    setMeterInterval(ms) {
+        const safeMs = Math.max(1000, ms); // Protect mixer from spam (Min 1s)
+        console.log(`🛡️  Setting Meter Refresh Rate to ${safeMs}ms`);
+        this.startMetering(safeMs);
     }
 
     connect() {

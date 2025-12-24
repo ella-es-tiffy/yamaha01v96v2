@@ -18,7 +18,7 @@
                 <span class="brand">YAMAHA</span>
                 <span class="model">01V96 PRO TOUCH</span>
                 <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.73d</span>
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.74d</span>
             </div>
             <div class="header-right">
                 <div class="bank-selector" style="display: flex; gap: 4px; margin-right: 15px;">
@@ -93,6 +93,17 @@
             <!-- DEVELOPER SECTION (Visible only in HEX mode) -->
             <div id="dev-panel" class="dev-panel" style="display: none;">
                 <div class="dev-header">DEVELOPER SETTINGS</div>
+
+                <div class="dev-group">
+                    <label>METER REFRESH RATE</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="meter-rate-slider" min="1" max="60" value="30" style="flex: 1;">
+                        <span id="meter-rate-val"
+                            style="width: 40px; font-family: monospace; color: var(--accent);">30s</span>
+                    </div>
+                    <p style="font-size: 0.5rem; color: #666; margin-top: 5px;">Trigger interval for meter stream (Min
+                        1s, Default 30s).</p>
+                </div>
 
                 <div class="dev-group">
                     <label>METER NOISE GATE (OFFSET)</label>

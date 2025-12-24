@@ -1,6 +1,12 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.73d] - 2024-12-24
+## [v0.74d] - 2024-12-24
+### Added
+- **Developer Panel**: Added "METER REFRESH RATE" slider (1s - 60s). This control allows manual adjustment of the meter request interval to fix lagginess/stream dropouts.
+### Fixed
+- **Meter Engine**: Implemented a safety-guarded (Min 1s) metering poll to keep the MIDI meter stream alive without overloading the mixer.
+
+## [v0.73d] - 2024-12-24 (Previous)
 ### Added
 - **Menu Bar**: Replaced "VIEW HEX" button with a cleaner gear icon (⚙️).
 ### Fixed

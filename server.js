@@ -43,6 +43,7 @@ wss.on('connection', (ws) => {
             else if (data.type === 'setEQ') yamaha.setEQ(data.channel, data.band, data.param, data.value);
             else if (data.type === 'setEQOn') yamaha.setEQOn(data.channel, data.value);
             else if (data.type === 'setSelectChannel') yamaha.setSelectedChannel(data.channel);
+            else if (data.type === 'setMeterInterval') yamaha.setMeterInterval(data.value);
             else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
             else if (data.type === 'getChangelog') {
                 fs.readFile(path.join(__dirname, 'changelog.md'), 'utf8', (err, log) => {

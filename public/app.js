@@ -351,6 +351,15 @@ class YamahaTouchRemote {
             document.getElementById('meter-offset-val').innerText = val;
         });
 
+        document.getElementById('meter-rate-slider')?.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            this.send('setMeterInterval', { value: val * 1000 });
+        });
+
+        document.getElementById('meter-rate-slider')?.addEventListener('input', (e) => {
+            document.getElementById('meter-rate-val').innerText = e.target.value + 's';
+        });
+
         document.getElementById('debug-btn')?.addEventListener('click', () => {
             const l = document.getElementById('debug-log');
             if (l) l.style.display = l.style.display === 'none' ? 'block' : 'none';
