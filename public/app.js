@@ -112,7 +112,7 @@ class YamahaTouchRemote {
             <div style="padding: 0 5px 10px 5px; display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #222; margin-bottom: 12px;">
                 <div style="display: flex; align-items: baseline; gap: 8px;">
                     <span style="color: #666; font-weight: 900; font-size: 0.8rem; letter-spacing: 1px;">EQ</span>
-                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 900; font-size: 1.6rem; text-shadow: 0 0 10px rgba(0,210,255,0.4); line-height: 1;">${this.selectedChannel}</span>
+                    <span id="sel-ch-label" style="color: var(--accent); font-weight: 900; font-size: 0.8rem; text-shadow: 0 0 10px rgba(0,210,255,0.4); line-height: 1;">${this.selectedChannel}</span>
                 </div>
                 <span style="color: #444; font-size: 0.5rem; letter-spacing: 2px; font-weight: 300; text-transform: uppercase;">4-Band Parametric Equalizer</span>
             </div>
@@ -146,7 +146,7 @@ class YamahaTouchRemote {
         innerGrid.style.padding = '10px';
 
         innerGrid.innerHTML = `
-            <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center;">
+            <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center; padding-top: 40px;">
                 <div class="row-label" style="font-size: 0.6rem; color: #666;">ATT</div>
                 <div style="position: relative;">
                     <div class="value-display" id="val-enc-att" style="position: absolute; top: -15px; width: 60px; text-align: center; left: 50%; transform: translateX(-50%); font-size: 0.5rem; color: var(--accent);">--</div>
@@ -158,9 +158,16 @@ class YamahaTouchRemote {
                     </svg>
                 </div>
             </div>
-            <div style="display: flex; gap: 5px; flex-direction: column;">
-                <span class="eq-label"
-                    style="font-size: 0.6rem; color: #666; width: 100%; text-align: center; letter-spacing: 4px;">TY PE</span>
+            <div style="display: flex; gap: 5px; flex-direction: column; align-items: center;">
+                <div style="display: flex; align-items: center; width: 100%; gap: 8px; margin-bottom: 2px;">
+                    <div style="flex: 1; height: 1px; background: #444; position: relative;">
+                        <div style="position: absolute; left: 0; top: 0; width: 1px; height: 4px; background: #444;"></div>
+                    </div>
+                    <span class="eq-label" style="font-size: 0.6rem; color: #777; letter-spacing: 1px; font-weight: bold; white-space: nowrap;">TYPE</span>
+                    <div style="flex: 1; height: 1px; background: #444; position: relative;">
+                        <div style="position: absolute; right: 0; top: 0; width: 1px; height: 4px; background: #444;"></div>
+                    </div>
+                </div>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
