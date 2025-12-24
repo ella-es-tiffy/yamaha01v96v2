@@ -212,69 +212,58 @@ class Yamaha01V96Controller {
             return;
         }
 
-        const v = Math.round(value); // 0-1023
-        console.log(`🎚️ SetFader ${channel} -> ${v}`);
+        if (!this.connected) return;
 
-        // SysEx Parameter Change format (kryops style)
-        // F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7
-        // Element: 1C (Channel Fader), 4F (Master Fader)
-        // Data: 4 bytes for 10-bit value: 00 00 (v>>7) (v&0x7F)
-        const dataBytes = [0x00, 0x00, (v >> 7) & 0x7F, v & 0x7F];
+        // Fader data: mixer uses 4 bytes
+        const dataBytes = [
+            (value >> 7) & 0x07, // High bits (usually very small for 10-bit)
+            (value >> 0) & 0x7F, // Middle bits
+            0x00, 0x00           // Padding
+        ];
 
+        let msg;
         if (channel === 'master') {
-            // Master Fader: Element 0x4F, P1=0, P2=0
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x4F, 0x00, 0x00, ...dataBytes, 0xF7]);
+            msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x4F, 0x00, 0x00, ...dataBytes, 0xF7];
         } else {
-            // Channel Fader: Element 0x1C, P1=0, P2=channel-1
             const chInt = parseInt(channel, 10);
-            const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1C, 0x00, chInt - 1, ...dataBytes, 0xF7];
-            this.output.sendMessage(msg);
-            if (this.onRawMidi) this.onRawMidi(msg, true);
+            msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1C, 0x00, chInt - 1, ...dataBytes, 0xF7];
         }
+
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
+        console.log(`🎚️ SetFader ${channel} -> ${value}`);
     }
 
     setMute(channel, isMuted) {
-        if (!this.connected) {
-            console.warn('❌ Mute skipped: Not connected');
-            return;
-        }
+        if (!this.connected) return;
 
-        console.log(`🚫 SetMute ${channel} -> ${isMuted}`);
-
-        // SysEx Parameter Change format (kryops style)
-        // Element: 1A (Channel On/Mute), 4D (Master On/Mute)
-        // Data: 4 bytes: 00 00 00 (on?1:0) where on=!muted
+        // On/Off is usually 00 00 00 01 (On) or 00 00 00 00 (Muted)
+        // Wait, Yamaha "On" button means NOT muted.
         const dataBytes = [0x00, 0x00, 0x00, isMuted ? 0 : 1];
 
+        let msg;
         if (channel === 'master') {
-            // Master On/Mute: Element 0x4D
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x4D, 0x00, 0x00, ...dataBytes, 0xF7]);
+            msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x4D, 0x00, 0x00, ...dataBytes, 0xF7];
         } else {
-            // Channel On/Mute: Element 0x1A
             const chInt = parseInt(channel, 10);
-            this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1A, 0x00, chInt - 1, ...dataBytes, 0xF7]);
+            msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1A, 0x00, chInt - 1, ...dataBytes, 0xF7];
         }
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
+        console.log(`🔇 SetMute ${channel} -> ${isMuted}`);
     }
 
     setEQ(channel, band, type, value) {
         if (!this.connected) return;
 
-        // SysEx Parameter Change format
-        // F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7
-        // Element 0x20 = EQ
-        // P1 = param type, P2 = channel-1
-
         const chIdx = parseInt(channel) - 1;
 
-        // Map band+param to P1 value
-        // For now, using LOW band values from capture:
-        // gain=0x01, freq=0x02, q=0x03
-        // TODO: Need to capture other bands to determine their P1 values
+        // Corrected based on Logs: Q=1, Freq=2, Gain=3
         const paramMap = {
-            'low': { gain: 0x01, freq: 0x02, q: 0x03 },
-            'lmid': { gain: 0x04, freq: 0x05, q: 0x06 }, // Guessed - needs verification
-            'hmid': { gain: 0x07, freq: 0x08, q: 0x09 }, // Guessed
-            'high': { gain: 0x0A, freq: 0x0B, q: 0x0C }  // Guessed
+            'low': { q: 0x01, freq: 0x02, gain: 0x03 },
+            'lmid': { q: 0x04, freq: 0x05, gain: 0x06 },
+            'hmid': { q: 0x07, freq: 0x08, gain: 0x09 },
+            'high': { q: 0x0A, freq: 0x0B, gain: 0x0C }
         };
 
         const p1 = paramMap[band]?.[type];
@@ -283,11 +272,31 @@ class Yamaha01V96Controller {
             return;
         }
 
-        // Data: 4 bytes, value in last 2 bytes (7-bit each)
-        // For simple values 0-127, use: 00 00 00 value
-        const dataBytes = [0x00, 0x00, 0x00, value & 0x7F];
+        // Gain is signed (-180 to +180 for -18dB to +18dB)
+        let dataBytes;
+        if (type === 'gain') {
+            // Map iPad 0-127 -> Mixer -180 to +180
+            const mixerVal = Math.round(((value / 127) * 360) - 180);
 
-        this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, p1, chIdx, ...dataBytes, 0xF7]);
+            // Yamaha 4-byte 7-bit signed representation
+            dataBytes = [
+                (mixerVal < 0) ? 0x7F : 0x00,
+                (mixerVal < 0) ? 0x7F : 0x00,
+                (mixerVal >> 7) & 0x7F,
+                mixerVal & 0x7F
+            ];
+        } else if (type === 'q') {
+            // Rescale iPad (0-127) to Mixer (0-39 / 0x27h)
+            const scaledQ = Math.round((value / 127) * 39);
+            dataBytes = [0x00, 0x00, 0x00, scaledQ & 0x7F];
+        } else {
+            // Freq: Keep 0-127 for now
+            dataBytes = [0x00, 0x00, 0x00, value & 0x7F];
+        }
+
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, p1, chIdx, ...dataBytes, 0xF7];
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
 
         console.log(`🎛️ EQ ${channel} ${band}.${type} -> ${value}`);
     }
@@ -295,48 +304,42 @@ class Yamaha01V96Controller {
     setPan(channel, value) {
         if (!this.connected) return;
 
-        // Map UI (0-127) to Mixer (-63 to +63)
-        // Center (64) -> 0
         const mixerVal = value - 64;
         const chIdx = parseInt(channel) - 1;
 
-        // Data format from log:
-        // Positive/Zero: 00 00 00 val
-        // Negative: 7F 7F 7F (128+val)
         let dataBytes = [0x00, 0x00, 0x00, mixerVal & 0x7F];
         if (mixerVal < 0) {
             dataBytes = [0x7F, 0x7F, 0x7F, (128 + mixerVal) & 0x7F];
         }
 
-        this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1B, 0x00, chIdx, ...dataBytes, 0xF7]);
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1B, 0x00, chIdx, ...dataBytes, 0xF7];
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
         console.log(`↔️ Pan ${channel} -> ${mixerVal}`);
     }
 
     setEQOn(channel, isOn) {
         if (!this.connected) return;
+        const chIdx = parseInt(channel) - 1;
 
-        const isUpper = channel > 24;
-        const status = isUpper ? 0xBD : 0xBC;
-        const chOffset = (channel - 1) % 24;
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x0F, chIdx, 0x00, 0x00, 0x00, isOn ? 1 : 0, 0xF7];
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
 
-        // Logic from User:
-        // Ch1-24: BC 59 ...
-        // Ch25-32: BD 59 ... (Starts again at 59)
-        // Stride: If Ch32 is 0x66 (102) and Start is 0x59 (89).
-        // 102 - 89 = 13.
-        // Index difference: 32 - 25 = 7.
-        // 13 / 7 = 1.85. 
-        // This likely means Channel spacing is indeed irregular or uses 2 CCs?
-        // But for "EQ On" switch, it's usually 1 bit.
-        // Let's assume Stride 1 (+ offset) for now OR listen to what logs say later.
-        // Implementing simple offset linear mapping first as I can't guess Stride 1.85.
-        // Actually, if Ch1 is 59, Ch2 is 5A?
+        console.log(`🔌 EQ ON/OFF ${channel} -> ${isOn}`);
+    }
 
-        const cc = 0x59 + chOffset;
-        const val = isOn ? 0x7F : 0x00;
+    setSelectedChannel(channel) {
+        if (!this.connected) return;
 
-        console.log(`🎛️ EQ On/Off ${channel} -> ${isOn} (Status ${status.toString(16)} CC ${cc.toString(16)})`);
-        this.output.sendMessage([status, cc, val]);
+        // Value: 0-31 for channels, 56 (0x38) for Master
+        const val = (channel === 'master') ? 56 : (parseInt(channel) - 1);
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x0D, 0x04, 0x09, 0x18, 0x00, 0x00, 0x00, 0x00, val, 0xF7];
+
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        console.log(`🔵 SEL Channel -> ${channel} (Valve: ${val})`);
     }
 
     disconnect() {

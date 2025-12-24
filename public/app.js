@@ -347,9 +347,13 @@ class YamahaTouchRemote {
     }
 
     selectChannel(ch) {
-        this.selectedChannel = parseInt(ch);
-        this.updateSelectionUI();
-        this.updateKnobAddresses();
+        this.selectedChannel = (ch === 'master') ? 'master' : parseInt(ch);
+        console.log(`🔵 Selected: ${this.selectedChannel}`);
+
+        this.send('setSelectChannel', { channel: ch });
+
+        this.renderMixer();
+        this.renderEQ();
         this.syncEQToSelected();
     }
 
@@ -447,7 +451,33 @@ class YamahaTouchRemote {
         };
         this.socket.onmessage = (msg) => {
             const data = JSON.parse(msg.data);
-            if (data.type === 'state') {
+            if (data.type === 'midiLog') {
+                const isMeter = data.data[0] === 0xF0 && data.data[5] === 0x21;
+                if (isMeter) return; // Hide meter spam in main UI log
+
+                const hex = data.data.map(b => b.toString(16).padStart(2, '0')).join(' ');
+                const isOut = data.isOutgoing;
+
+                const logEl = document.getElementById('debug-log');
+                if (logEl && logEl.style.display !== 'none') {
+                    const entry = document.createElement('div');
+                    entry.style.fontSize = '0.65rem';
+                    entry.style.fontFamily = 'monospace';
+                    entry.style.padding = '2px 0';
+                    entry.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+
+                    const dir = isOut ?
+                        '<span style="color:#aaa;">[OUT]</span>' :
+                        '<span style="color:#34c759;">[IN]</span>';
+
+                    entry.innerHTML = `${dir} ${hex}`;
+                    logEl.appendChild(entry);
+
+                    // Keep last 50 entries
+                    while (logEl.children.length > 50) logEl.removeChild(logEl.firstChild);
+                    logEl.scrollTop = logEl.scrollHeight;
+                }
+            } else if (data.type === 'state') {
                 // Merge state selectively to preserve local fader values during drag
                 const newState = data.data;
 
