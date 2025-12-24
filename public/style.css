@@ -262,6 +262,24 @@ header {
     box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);
 }
 
+.pan-area {
+    margin: 8px 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.pan-val {
+    width: 36px !important;
+    font-size: 0.6rem !important;
+}
+
+.pan-knob {
+    width: 36px;
+    height: 36px;
+}
+
 .channel-strip.selected {
     border-color: var(--accent);
     box-shadow: 0 0 20px rgba(0, 210, 255, 0.2), inset 0 0 10px rgba(0, 210, 255, 0.1);

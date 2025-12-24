@@ -14,7 +14,7 @@ class YamahaTouchRemote {
 
         this.state = {
             channels: Array(32).fill(null).map((_, i) => ({
-                fader: 0, mute: false, eq: {
+                fader: 0, mute: false, pan: 64, eq: {
                     low: { q: 64, freq: 64, gain: 64 },
                     lmid: { q: 64, freq: 64, gain: 64 },
                     hmid: { q: 64, freq: 64, gain: 64 },
@@ -74,6 +74,15 @@ class YamahaTouchRemote {
                 <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
                 <div class="eq-button" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
+                <div class="pan-area">
+                    <div class="value-display pan-val" id="val-pan-${i}">--</div>
+                    <svg class="knob-svg pan-knob" id="pan-${i}" viewBox="0 0 60 60" data-ch="${i}">
+                        <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
+                        <path id="ring-pan-${i}" d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-active" stroke-linecap="round" stroke-dasharray="120" stroke-dashoffset="120" />
+                        <circle cx="30" cy="30" r="20" class="knob-circle"></circle>
+                        <line x1="30" y1="30" x2="30" y2="10" class="knob-indicator" id="ind-pan-${i}"></line>
+                    </svg>
+                </div>
                 <div class="fader-area" id="slot-${i}" data-ch="${i}">
                     <div class="fader-track"><div class="fader-thumb" id="thumb-${i}"></div></div>
                     <div class="meter-bar"><div class="meter-fill" id="meter-${i}"></div></div>
@@ -82,6 +91,7 @@ class YamahaTouchRemote {
             `;
             mixer.appendChild(strip);
             this.updateFaderUI(i, chState?.fader || 0);
+            this.updatePanUI(i, chState?.pan ?? 64);
             this.updateMeterUI(i, chState?.meter || 0);
         }
         this.updateSelectionUI();
@@ -209,6 +219,31 @@ class YamahaTouchRemote {
                 this.send('setEQOn', { channel: ch, value: !isActive });
             } else if (selBtn) {
                 this.selectChannel(selBtn.dataset.ch);
+            }
+        });
+
+        // Channel Strip Pan Delegation
+        document.querySelector('.mixer-layout-wrapper').addEventListener('pointerdown', (e) => {
+            const knob = e.target.closest('.pan-knob');
+            if (knob) {
+                e.preventDefault(); e.stopPropagation();
+                knob.setPointerCapture(e.pointerId);
+                const chId = knob.dataset.ch;
+                this.activeKnob = `pan-${chId}`;
+                let startY = e.clientY;
+                let startVal = this.state.channels[parseInt(chId) - 1].pan || 64;
+                const onMove = (me) => {
+                    if (this.activeKnob === `pan-${chId}`) {
+                        const delta = (startY - me.clientY) * 0.6;
+                        let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
+                        this.updatePanUI(chId, val);
+                        this.state.channels[parseInt(chId) - 1].pan = val;
+                        this.send('setPan', { channel: chId, value: val });
+                    }
+                };
+                const onUp = () => { knob.releasePointerCapture(e.pointerId); this.activeKnob = null; knob.removeEventListener('pointermove', onMove); };
+                knob.addEventListener('pointermove', onMove);
+                knob.addEventListener('pointerup', onUp, { once: true });
             }
         });
 
@@ -367,6 +402,11 @@ class YamahaTouchRemote {
 
     getKnobMIDI(knobEl) { return parseInt(knobEl.dataset.midi) || 64; }
 
+    updatePanUI(id, value) {
+        const knob = document.getElementById(`pan-${id}`);
+        if (knob) this.updateKnobUI(knob, value);
+    }
+
     updateFaderUI(id, value) {
         const thumb = document.getElementById(`thumb-${id}`);
         if (!thumb) return;
@@ -406,11 +446,13 @@ class YamahaTouchRemote {
                 for (let i = 0; i < 32; i++) {
                     if (!this.state.channels[i]) this.state.channels[i] = newState.channels[i];
                     else {
-                        // Preserve fader during drag
+                        // Preserve fader and pan during drag
                         const preserveFader = this.activeFader === String(i + 1);
+                        const preservePan = this.activeKnob === `pan-${i + 1}`;
                         this.state.channels[i] = {
                             ...newState.channels[i],
-                            fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader
+                            fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader,
+                            pan: preservePan ? this.state.channels[i].pan : newState.channels[i].pan
                         };
                     }
                 }
@@ -465,6 +507,9 @@ class YamahaTouchRemote {
             // Don't update fader if user is actively moving it
             if (this.activeFader !== String(i)) {
                 this.updateFaderUI(i, ch.fader);
+            }
+            if (!this.activeKnob || this.activeKnob !== `pan-${i}`) {
+                this.updatePanUI(i, ch.pan || 64);
             }
             this.updateMuteUI(i, ch.mute);
             this.updateMeterUI(i, ch.meter);

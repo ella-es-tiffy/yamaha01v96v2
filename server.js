@@ -41,6 +41,7 @@ wss.on('connection', (ws) => {
             // --- NEW EQ HANDLER ---
             else if (data.type === 'setEQ') yamaha.setEQ(data.channel, data.band, data.param, data.value);
             else if (data.type === 'setEQOn') yamaha.setEQOn(data.channel, data.value);
+            else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
         } catch (e) { console.error('WS Error:', e); }
     });
 });

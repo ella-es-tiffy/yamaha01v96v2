@@ -254,60 +254,53 @@ class Yamaha01V96Controller {
     setEQ(channel, band, type, value) {
         if (!this.connected) return;
 
-        // Base Status per Band (Low=B2, L-Mid=B3, H-Mid=B4, High=B5 for Ch1-24?) -> Check Offset Logic
-        // Original Logic: low: 0xB2, lmid: 0xB4... Wait, your logs show B2 for Low?
-        // Let's stick to the observed B2 for now.
+        // SysEx Parameter Change format
+        // F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7
+        // Element 0x20 = EQ
+        // P1 = param type, P2 = channel-1
 
-        // Mappings based on Logic so far:
-        const baseStatusMap = { low: 0xB2, lmid: 0xB4, hmid: 0xB6, high: 0xB8 };
-        const isUpper = channel > 24;
-        let status = baseStatusMap[band] + (isUpper ? 1 : 0);
+        const chIdx = parseInt(channel) - 1;
 
-        // CC Offsets relative to channel
-        // Gain: MSB=0x01+Offset, LSB=0x21+Offset   (Based on logs B2 01 / B2 21)
-        // Freq: 0x40+Offset
-        // Q:    0x59+Offset (inverted)
+        // Map band+param to P1 value
+        // For now, using LOW band values from capture:
+        // gain=0x01, freq=0x02, q=0x03
+        // TODO: Need to capture other bands to determine their P1 values
+        const paramMap = {
+            'low': { gain: 0x01, freq: 0x02, q: 0x03 },
+            'lmid': { gain: 0x04, freq: 0x05, q: 0x06 }, // Guessed - needs verification
+            'hmid': { gain: 0x07, freq: 0x08, q: 0x09 }, // Guessed
+            'high': { gain: 0x0A, freq: 0x0B, q: 0x0C }  // Guessed
+        };
 
-        // The channel offset seems to be embedded in the CC number? 
-        // No, in the logs we saw B2 01 XX, B2 21 YY. This is for Channel 1 Low Gain?
-        // Let's assume (channel - 1) % 24 logic applies to the CC offset if not 0.
-
-        // Wait, if Ch1 Gain is 01/21, then Ch2 Gain would be...?
-        // Looking at old code: cc = base + ((ch-1)%24).
-        // Let's trust the logic that worked partially before but fix the 14-bit part.
-
-        const chOffset = (channel - 1) % 24;
-
-        if (type === 'gain') {
-            // GAIN IS 14-BIT
-            // Range 0-127 incoming mapped to 14-bit? 
-            // Or does the internal logic handle 0-127 and we just need to send it as MSB?
-            // Logs: B2 01 30 (48) -> B2 21 00. Total ~ 6144. 
-            // Center (64) would be ~8192 (0x40 00)?
-            // Let's map 0-127 input -> 0-16383 output first?
-            // Actually, Yamaha usually does 0-127 for simple control, but if it sends pairs...
-            // Let's try sending value as MSB and 00 as LSB for now to stabilize it.
-
-            const msbCC = 0x01 + chOffset;
-            const lsbCC = 0x21 + chOffset;
-
-            // Map 0-127 to approximate Yamaha Gain values
-            // Or just pass the value as MSB?
-            // If Log showed B2 01 30 (Dec 48), that's a reasonable MSB.
-
-            this.output.sendMessage([status, msbCC, value]);      // MSB
-            this.output.sendMessage([status, lsbCC, 0x00]);       // LSB (Fine)
-        } else {
-            // FREQ & Q ARE 7-BIT (Single CC)
-            const baseCCMap = { freq: 0x40, q: 0x59 };
-            let cc = baseCCMap[type] + chOffset;
-
-            let val = value;
-            if (type === 'q') val = 127 - val;
-
-
-            this.output.sendMessage([status, cc, val]);
+        const p1 = paramMap[band]?.[type];
+        if (p1 === undefined) {
+            console.warn(`Unknown EQ param: ${band}.${type}`);
+            return;
         }
+
+        // Data: 4 bytes, value in last 2 bytes (7-bit each)
+        // For simple values 0-127, use: 00 00 00 value
+        const dataBytes = [0x00, 0x00, 0x00, value & 0x7F];
+
+        this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, p1, chIdx, ...dataBytes, 0xF7]);
+
+        console.log(`🎛️ EQ ${channel} ${band}.${type} -> ${value}`);
+    }
+
+    setPan(channel, value) {
+        if (!this.connected) return;
+
+        // SysEx Parameter Change format for Pan
+        // Element 0x1B, P1=0x00, P2=channel-1
+        const chIdx = parseInt(channel) - 1;
+
+        // Data: mixer sends 7F 7F 7F val, which is -1 sign-extended or similar.
+        // Usually just [0x00, 0x00, 0x00, val] also works, but let's match capture.
+        const dataBytes = [0x7F, 0x7F, 0x7F, value & 0x7F];
+
+        this.output.sendMessage([0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1B, 0x00, chIdx, ...dataBytes, 0xF7]);
+
+        console.log(`↔️ Pan ${channel} -> ${value}`);
     }
 
     setEQOn(channel, isOn) {
