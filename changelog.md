@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.69d] - 2024-12-24
+## [v0.70d] - 2024-12-24
+### Fixed
+- **Fader Section**: Pan hex values (e.g., `(40)`) in the display are now correctly synced with the "VIEW HEX" toggle. They are hidden by default and only appear when debug mode is active.
+
+## [v0.69d] - 2024-12-24 (Previous)
 ### Changed
 - **Fader Section**: Slowed down FX button square-wave blink from 0.5s to 1s for a more relaxed visual feedback.
 

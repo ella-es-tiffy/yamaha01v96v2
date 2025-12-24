@@ -475,10 +475,11 @@ class YamahaTouchRemote {
         if (valEl) {
             const hex = val.toString(16).toUpperCase().padStart(2, '0');
             if (knobEl.id.startsWith('pan-')) {
-                // PAN CUSTOM DISPLAY (No 'h')
-                if (val === 64) valEl.innerText = `CENTER (${hex})`;
-                else if (val < 64) valEl.innerText = `L${64 - val} (${hex})`;
-                else valEl.innerText = `R${val - 64} (${hex})`;
+                // PAN CUSTOM DISPLAY (Hex toggled by debugUI)
+                const hexLabel = this.debugUI ? ` (${hex})` : '';
+                if (val === 64) valEl.innerText = `CENTER${hexLabel}`;
+                else if (val < 64) valEl.innerText = `L${64 - val}${hexLabel}`;
+                else valEl.innerText = `R${val - 64}${hexLabel}`;
             } else {
                 // DEFAULT HEX (EQ, etc) - No 'h' suffix
                 valEl.innerText = hex;
