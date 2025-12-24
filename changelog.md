@@ -1,5 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.65d] - 2024-12-24
+### Changed
+- **Project Structure**: Cleaned up root directory. Moved all 70+ sniffer and debug scripts into the `/dev` folder.
+- **Organization**: Root directory now only contains core production files.
+
 ## [v0.64d] - 2024-12-24
 ### Changed
 - **FX Animation**: Switched from sine to symmetric square-wave blink (0.5s on/off).
