@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.66d] - 2024-12-24
+## [v0.68d] - 2024-12-24
+### Added
+- **Workflow Optimization**: Refined `agents.md` to prioritize small, iterative changes and established clear naming for UI sections (Fader, EQ, Header).
+
+## [v0.66d] - 2024-12-24 (Previous)
 ### Added
 - **Guidelines Update**: Added specific rules for `/dev` folder usage in `agents.md`.
 - **Infrastructure**: Established `/dev` as a persistent scratchpad for AI testing and sniffer scripts.
