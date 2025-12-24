@@ -458,9 +458,14 @@ class YamahaTouchRemote {
 
                             // HPF BINARY SWITCH LOGIC (Q=0)
                             if (band === 'low' && chObj && chObj.eq[band] && chObj.eq[band].q === 0) {
-                                // Strict Toggle: If 0, any move -> 127. If 127, any move -> 0.
-                                if (startVal < 64) val = 127;
-                                else val = 0;
+                                // Directional Toggle: Only toggle if moving in the 'other' direction
+                                if (startVal < 64) {
+                                    // Currently OFF: Only toggle ON if moving UP
+                                    val = (delta > 0) ? 127 : 0;
+                                } else {
+                                    // Currently ON: Only toggle OFF if moving DOWN
+                                    val = (delta < 0) ? 0 : 127;
+                                }
                             }
                         }
 

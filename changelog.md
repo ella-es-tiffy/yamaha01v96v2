@@ -1,6 +1,13 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.90d] - 2024-12-24
+## [v0.91d] - 2024-12-24
+### Changed
+- **EQ Section**: **Directional Toggle Logic** for HPF Gain:
+  - If Gain is **OFF (0)**: Turning the knob **UP** snaps it to **ON (127)**. Turning it DOWN (further left) keeps it OFF.
+  - If Gain is **ON (127)**: Turning the knob **DOWN** snaps it to **OFF (0)**. Turning it UP (further right) keeps it ON.
+  - This prevents accidental toggles when trying to "force" the knob into its current state.
+
+## [v0.90d] - 2024-12-24 (Previous)
 ### Changed
 - **EQ Section**: **HPF (Low Q=0) Logic Update**:
   - Entering HPF mode (Q=0) now **forces** the Gain to 0 (OFF) immediately.
