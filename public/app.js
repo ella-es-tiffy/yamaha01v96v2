@@ -13,8 +13,8 @@ class YamahaTouchRemote {
         this.activeFader = null; // Track which fader is being actively moved
 
         this.state = {
-            channels: Array(32).fill(null).map((_, i) => ({
-                fader: 0, mute: false, pan: 64, eq: {
+            channels: Array(36).fill(null).map((_, i) => ({
+                fader: 0, mute: false, pan: 64, name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`, eq: {
                     low: { q: 64, freq: 64, gain: 64 },
                     lmid: { q: 64, freq: 64, gain: 64 },
                     hmid: { q: 64, freq: 64, gain: 64 },
@@ -61,7 +61,7 @@ class YamahaTouchRemote {
     renderMixer() {
         const mixer = document.getElementById('mixer');
         mixer.innerHTML = '';
-        const end = Math.min(32, this.currentBankStart + 7);
+        const end = Math.min(36, this.currentBankStart + 7);
         for (let i = this.currentBankStart; i <= end; i++) {
             const strip = document.createElement('div');
             strip.className = 'channel-strip';
@@ -88,6 +88,7 @@ class YamahaTouchRemote {
                     <div class="meter-bar"><div class="meter-fill" id="meter-${i}"></div></div>
                 </div>
                 <div class="db-val" id="val-${i}">${chState?.fader || 0}</div>
+                <div class="ch-name-box" id="name-box-${i}" data-ch="${i}">${chState?.name || `CH${i}`}</div>
             `;
             mixer.appendChild(strip);
             this.updateFaderUI(i, chState?.fader || 0);
@@ -496,18 +497,16 @@ class YamahaTouchRemote {
                 const newState = data.data;
 
                 // Update channels, but preserve fader value if actively dragging
-                for (let i = 0; i < 32; i++) {
-                    if (!this.state.channels[i]) this.state.channels[i] = newState.channels[i];
-                    else {
-                        // Preserve fader and pan during drag
-                        const preserveFader = this.activeFader === String(i + 1);
-                        const preservePan = this.activeKnob === `pan-${i + 1}`;
-                        this.state.channels[i] = {
-                            ...newState.channels[i],
-                            fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader,
-                            pan: preservePan ? this.state.channels[i].pan : newState.channels[i].pan
-                        };
-                    }
+                for (let i = 0; i < 36; i++) {
+                    if (!this.state.channels[i]) continue;
+                    // Preserve fader and pan during drag
+                    const preserveFader = this.activeFader === String(i + 1);
+                    const preservePan = this.activeKnob === `pan-${i + 1}`;
+                    this.state.channels[i] = {
+                        ...newState.channels[i],
+                        fader: preserveFader ? this.state.channels[i].fader : newState.channels[i].fader,
+                        pan: preservePan ? this.state.channels[i].pan : newState.channels[i].pan
+                    };
                 }
 
                 // Update master, preserve fader if dragging
@@ -561,9 +560,10 @@ class YamahaTouchRemote {
     }
 
     syncFaders() {
-        const end = Math.min(32, this.currentBankStart + 7);
+        const end = Math.min(36, this.currentBankStart + 7);
         for (let i = this.currentBankStart; i <= end; i++) {
             const ch = this.state.channels[i - 1];
+            if (!ch) continue;
             // Don't update fader if user is actively moving it
             if (this.activeFader !== String(i)) {
                 this.updateFaderUI(i, ch.fader);
@@ -573,11 +573,17 @@ class YamahaTouchRemote {
             }
             this.updateMuteUI(i, ch.mute);
             this.updateMeterUI(i, ch.meter);
+            this.updateNameUI(i, ch.name);
         }
         if (this.activeFader !== 'master') {
             this.updateFaderUI('master', this.state.master.fader);
         }
         this.updateMuteUI('master', this.state.master.mute);
+    }
+
+    updateNameUI(ch, name) {
+        const el = document.getElementById(`name-box-${ch}`);
+        if (el && name) el.innerText = name;
     }
 
     updateMeterUI(ch, val) {

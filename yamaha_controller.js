@@ -14,7 +14,7 @@ class Yamaha01V96Controller {
             selectedChannel: 1,
             channels: Array(36).fill(null).map((_, i) => ({
                 number: i + 1,
-                name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`,
+                name: (i === 0) ? "RB" : (i === 1) ? "RH" : (i === 2) ? "LB" : (i === 3) ? "LH" : (i === 4) ? "BT_B" : (i === 5) ? "BTH" : (i < 32) ? `CH${i + 1}` : `ST${i - 31}`,
                 fader: 0,
                 mute: false,
                 solo: false,
@@ -232,6 +232,12 @@ class Yamaha01V96Controller {
                     }
                 }
             }
+
+            // C: Bulk Dump Handling (Channel Names)
+            if (message[0] === 0xF0 && message[1] === 0x43 && message[7] === 0x4C && message[8] === 0x4D) { // LM signature
+                this.handleBulkDump(message);
+                changed = true;
+            }
         }
 
         // 2. CC HANDLING (Fallback)
@@ -250,6 +256,45 @@ class Yamaha01V96Controller {
                     this._stateThrottle = null;
                 }, 100);
             }
+        }
+    }
+
+    handleBulkDump(msg) {
+        // Detect "LM  8C93 R" block (Remote/Names)
+        const signature = String.fromCharCode(...msg.slice(7, 15));
+        const type = msg[15];
+
+        if (signature === "LM  8C93" && type === 0x52) { // 'R' block
+            console.log('📦 Bulk Dump Received: Analyzing Channel Names...');
+            const rawData = [];
+            // Remove Bit-Bytes (every 8th byte in Yamaha LM format)
+            // Header is 20 bytes (0..19), actual data starts at 20.
+            for (let i = 20; i < msg.length - 1; i++) {
+                if ((i - 20) % 8 === 0) continue; // Skip bit-bytes
+                rawData.push(msg[i]);
+            }
+
+            // Names start at internal offset 320 (0x140) in the "R" block. 
+            // Yamaha interleaves characters: [All char 1s, All char 2s, ...]
+            // Buffer size is usually 32 or 64 per char block.
+            const BLOCK_SIZE = 32;
+            const OFFSET = 320;
+
+            for (let ch = 0; ch < BLOCK_SIZE; ch++) {
+                let name = "";
+                for (let charPos = 0; charPos < 8; charPos++) {
+                    const idx = OFFSET + (charPos * BLOCK_SIZE) + ch;
+                    const charCode = rawData[idx];
+                    if (charCode > 32 && charCode < 127) {
+                        name += String.fromCharCode(charCode);
+                    }
+                }
+
+                if (name.trim().length > 0 && this.state.channels[ch]) {
+                    this.state.channels[ch].name = name.trim();
+                }
+            }
+            console.log(`✅ Names updated from Mixer: ${this.state.channels.slice(0, 6).map(c => c.name).join(', ')}...`);
         }
     }
 
@@ -394,7 +439,11 @@ class Yamaha01V96Controller {
 
     async deepSync() {
         if (!this.connected) return;
-        console.log("🔄 Starting DEEP Sync (Full Mixer Retrieval)...");
+        console.log('🚀 Starting Full Deep Sync...');
+
+        // Request Names (Bulk)
+        this.output.sendMessage([0xF0, 0x43, 0x20, 0x3E, 0x0E, 0x00, 0xF7]);
+        await new Promise(r => setTimeout(r, 200));
 
         const elements = [
             { id: 0x1C, name: 'Fader', count: 32, p1: 0x00 },
