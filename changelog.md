@@ -1,6 +1,14 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.94d] - 2024-12-24
+## [v0.96d] - 2024-12-24
+### Fixed
+- **Core UI**: Fixed a SyntaxError in the pointer interaction logic that caused the UI to fail initialization ("Section weg").
+- **EQ Section**: **Centralized Logic (handleEQChange)**:
+  - All EQ interactions (Click, Drag, Wheel) now route through a single, robust handler.
+  - This ensures that **Save/Restore logic** and **HPF Toggle logic** are applied consistently regardless of input method.
+  - **State-Based Transitions**: The system now detects HPF/Shelf transitions based on the *actual internal state* rather than transient start values, significantly improving reliability ("Scuffed Toggle Fix").
+
+## [v0.94d] - 2024-12-24 (Previous)
 ### Fixed
 - **WebSocket Sync**: Added a dedicated `data.type === 'eq'` handler in the frontend WebSocket listener.
 - **Why?**: Previously, individual EQ parameter updates from the server refreshed the UI knobs but **failed to update the internal state object**. This caused logic dependent on state (like the Low Gain HPF toggle check `if (state.eq.low.q === 0)`) to read stale data, leading to incorrect behavior (e.g., gain acting binary even after Q was changed to Shelf).
