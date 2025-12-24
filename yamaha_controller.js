@@ -37,11 +37,12 @@ class Yamaha01V96Controller {
             console.log('📊 Sent initial Remote Meter Request');
         }
 
+        // Increased to 30s for stability (kryops used 10s, but causes freezes)
         this.meterInterval = setInterval(() => {
             if (this.connected) {
                 this.output.sendMessage(meterRequest);
             }
-        }, 10000);
+        }, 30000);
     }
 
     connect() {
