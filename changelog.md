@@ -1,6 +1,12 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.85d] - 2024-12-24
+## [v0.86d] - 2024-12-24
+### Added
+- **EQ Section**: Implemented **LPF** (High Q=0) and **HPF** (Low Q=0) sync logic for both bands.
+- **EQ Section**: Implemented **Gain Restore**: Moving Q back out of the filter zone restores the previous Gain value automatically.
+- **EQ Section**: Implemented **Snap-Toggle**: When Gain is "OFF" due to an active filter, moving the Gain encoder instantly jumps it to **+18dB (ON)**.
+
+## [v0.85d] - 2024-12-24 (Previous)
 ### Changed
 - **EQ Section**: Refined Gain-OFF logic. HPF snap (Gain -> OFF) now strictly applies to the **LOW** band only. **HIGH** band gain now remains active/visible at all times as requested.
 - **UI Stability**: Stabilized the EQ knob layout by giving the value displays a fixed height and line-height, preventing visual "jumps" when switching between labels (e.g., 'OFF' vs 'dB').

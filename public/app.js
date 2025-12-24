@@ -11,6 +11,7 @@ class YamahaTouchRemote {
         this.currentBankStart = 1;
         this.activeKnob = null;
         this.activeFader = null; // Track which fader is being actively moved
+        this.storedGains = {}; // Storage for gain values before HPF/LPF snapping
         this.debugUI = false; // Toggle for hex values/addresses
         this.meterOffset = 0; // Noise gate for meters
         this.meterBankOnly = false; // ECO Mode: Only visible 8 ch
@@ -447,12 +448,45 @@ class YamahaTouchRemote {
                 const onMove = (me) => {
                     if (this.activeKnob === knob.id) {
                         const delta = (startY - me.clientY) * 0.6;
-                        const val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
+                        let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
+
+                        // --- TOGGLE LOGIC: Jump from OFF to ON (+18dB) if interacting with snapped gain ---
+                        if (knob.dataset.param === 'gain') {
+                            const band = knob.dataset.band;
+                            const ch = this.selectedChannel;
+                            const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+                            if (chObj && chObj.eq[band] && chObj.eq[band].q === 0 && (band === 'low' || band === 'high')) {
+                                // Filter is active. If startVal was effectively 0 (visual OFF), and we move up, jump to 127
+                                if (delta > 2 && startVal < 10) val = 127;
+                            }
+                        }
+
                         this.updateKnobUI(knob, val);
                         if (knob.id === 'enc-att') {
                             this.send('setAtt', { channel: this.selectedChannel, value: val });
                         } else {
                             this.send('setEQ', { channel: this.selectedChannel, band: knob.dataset.band, param: knob.dataset.param, value: val });
+
+                            // --- RESTORE LOGIC: If we just moved Q out of 0, restore gain ---
+                            if (knob.dataset.param === 'q' && val > 0 && startVal === 0) {
+                                const band = knob.dataset.band;
+                                const key = `${this.selectedChannel}-${band}`;
+                                if (this.storedGains[key] !== undefined) {
+                                    const oldGain = this.storedGains[key];
+                                    const gainKnob = document.getElementById(`enc-${band}-gain`);
+                                    if (gainKnob) {
+                                        this.updateKnobUI(gainKnob, oldGain);
+                                        this.send('setEQ', { channel: this.selectedChannel, band: band, param: 'gain', value: oldGain });
+                                    }
+                                }
+                            }
+                            // Store original gain if we enter Q=0
+                            if (knob.dataset.param === 'q' && val === 0 && startVal > 0) {
+                                const band = knob.dataset.band;
+                                const ch = this.selectedChannel;
+                                const chObj = (ch === 'master') ? this.state.master : this.state.channels[ch - 1];
+                                if (chObj) this.storedGains[`${ch}-${band}`] = chObj.eq[band].gain;
+                            }
                         }
                     }
                 };
@@ -564,8 +598,8 @@ class YamahaTouchRemote {
             const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
             if (chObj && chObj.eq[band]) {
                 const qVal = chObj.eq[band].q;
-                // ONLY Low band Gain snaps to OFF during HPF
-                if (band === 'low' && qVal === 0) {
+                // Low band HPF (Q=0) and High band LPF (Q=0) force Gain to OFF
+                if ((band === 'low' || band === 'high') && qVal === 0) {
                     forceOff = true;
                     visualVal = 0; // Visual minimum
                 }
@@ -598,7 +632,7 @@ class YamahaTouchRemote {
             } else if (isEQ) {
                 let display = hex;
                 if (param === 'gain') {
-                    if (band === 'low' && (val === 0 || forceOff)) display = 'OFF';
+                    if ((band === 'low' || band === 'high') && (val === 0 || forceOff)) display = 'OFF';
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';
@@ -610,7 +644,7 @@ class YamahaTouchRemote {
                     if (band === 'low' && val === 0) display = 'HPF';
                     else if (band === 'low' && val === 127) display = 'L.SHLF';
                     else if (band === 'high' && val === 127) display = 'H.SHLF';
-                    else if (band === 'high' && val === 0) display = 'HPF';
+                    else if (band === 'high' && val === 0) display = 'LPF';
                     else {
                         // Q Mapping: val=1 -> 10.0, val=126 -> 0.10
                         const qValRaw = 10 - ((val - 1) / 125) * 9.9;
