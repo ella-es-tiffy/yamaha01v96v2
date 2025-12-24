@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.68d] - 2024-12-24
+## [v0.69d] - 2024-12-24
+### Changed
+- **Fader Section**: Slowed down FX button square-wave blink from 0.5s to 1s for a more relaxed visual feedback.
+
+## [v0.68d] - 2024-12-24 (Previous)
 ### Added
 - **Workflow Optimization**: Refined `agents.md` to prioritize small, iterative changes and established clear naming for UI sections (Fader, EQ, Header).
 

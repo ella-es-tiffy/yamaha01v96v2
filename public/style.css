@@ -224,7 +224,7 @@ header {
     color: white !important;
     border-color: #ff66b2 !important;
     box-shadow: 0 0 15px rgba(255, 0, 127, 0.6) !important;
-    animation: blink-square 0.5s step-end infinite;
+    animation: blink-square 1s step-end infinite;
 }
 
 @keyframes blink-square {
