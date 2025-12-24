@@ -121,78 +121,97 @@ class Yamaha01V96Controller {
         }
 
 
-        // 1. LIVE CC HANDLING
-        const bandBaseMap = {
-            0xB2: 'low', 0xB3: 'low', 0xB4: 'lmid', 0xB5: 'lmid',
-            0xB6: 'hmid', 0xB7: 'hmid', 0xB8: 'high', 0xB9: 'high',
-            0xBC: 'low', 0xBD: 'low'
-        };
+        // 1. CC HANDLING (Optional / Legacy)
+        if (status >= 0xB0 && status <= 0xBF) {
+            // Prioritize SysEx for faders, so we ignore CC 7 for faders to prevent jumping
+            if (data1 === 0x07) return;
 
-        if (bandBaseMap[status]) {
-            const band = bandBaseMap[status];
-            let type = ''; let chOffset = -1;
-            if (data1 >= 0x21 && data1 <= 0x38) { type = 'gain'; chOffset = data1 - 0x21; }
-            else if (data1 >= 0x40 && data1 <= 0x57) { type = 'freq'; chOffset = data1 - 0x40; }
-            else if (data1 >= 0x59 && data1 <= 0x70) { type = 'q'; chOffset = data1 - 0x59; }
-
-            if (status === 0xBC) chOffset = data1 - 0x21;
-            if (status === 0xBD) chOffset = (data1 - 0x21) + 24;
-
-            if (chOffset >= 0 && chOffset < 32) {
-                const val = (type === 'q' ? 127 - data2 : data2);
-                this.state.channels[chOffset].eq[band][type] = val;
-                changed = true;
+            // Live EQ CC Handling (keep for fast feedback if mixer sends it)
+            const bandBaseMap = {
+                0xB2: 'low', 0xB3: 'low', 0xB4: 'lmid', 0xB5: 'lmid',
+                0xB6: 'hmid', 0xB7: 'hmid', 0xB8: 'high', 0xB9: 'high',
+                0xBC: 'low', 0xBD: 'low'
+            };
+            if (bandBaseMap[status]) {
+                const band = bandBaseMap[status];
+                let type = ''; let chOffset = -1;
+                if (data1 >= 0x21 && data1 <= 0x38) { type = 'gain'; chOffset = data1 - 0x21; }
+                else if (data1 >= 0x40 && data1 <= 0x57) { type = 'freq'; chOffset = data1 - 0x40; }
+                else if (data1 >= 0x59 && data1 <= 0x70) { type = 'q'; chOffset = data1 - 0x59; }
+                if (status === 0xBC) chOffset = data1 - 0x21;
+                if (status === 0xBD) chOffset = (data1 - 0x21) + 24;
+                if (chOffset >= 0 && chOffset < 32) {
+                    this.state.channels[chOffset].eq[band][type] = (type === 'q' ? 127 - data2 : data2);
+                    changed = true;
+                }
             }
         }
 
-        // 2. SYSEX SYNC HANDLING (Answers to Requests)
-        // Format: [F0 43 1n 3E 7F 01 Area AddrH AddrM AddrL ... Val ... F7]
+        // 2. NEW SYSEX PARSING (F0 43 ... F7)
         if (message[0] === 0xF0 && message[1] === 0x43 && message[3] === 0x3E) {
-            const area = message[6];
-            const addrH = message[7];
-            const addrM = message[8];
-            const addrL = message[9];
 
-            let val = 0;
-            if (message.length === 13) {
-                // 14-bit value: [ValH ValL]
-                val = (message[10] << 7) | message[11];
-            } else if (message.length === 12) {
-                // 7-bit value: [Val]
-                val = message[10];
-            }
+            // A: Parameter Changes (Element based) - 14 Bytes
+            if (message[5] === 0x01 && message.length >= 13) {
+                const element = message[6];
+                const p1 = message[7];
+                const p2 = message[8];
+                const val14 = (message[11] << 7) | message[12];
+                const val7 = message[12];
 
-            // Input Channels (Area 0x01)
-            if (area === 0x01) {
-                const chIdx = addrM;
-                if (chIdx >= 0 && chIdx < 32) {
-                    const ch = this.state.channels[chIdx];
-                    if (addrL === 0x1C) { ch.fader = val; changed = true; }
-                    else if (addrL === 0x1A) { ch.mute = (val === 0); changed = true; }
-                    else if (addrL >= 0x00 && addrL <= 0x0F) {
-                        const bandIdx = Math.floor(addrL / 4);
-                        const paramIdx = addrL % 4;
-                        const bands = ['high', 'hmid', 'lmid', 'low'];
-                        const types = ['gain', 'freq', 'q', 'mode'];
-                        const band = bands[bandIdx];
-                        const type = types[paramIdx];
-
-                        if (type !== 'mode' && band) {
-                            let fVal = val & 0x7F;
-                            if (type === 'q') fVal = 127 - fVal;
-                            ch.eq[band][type] = fVal;
-                            changed = true;
+                if ([0x1C, 0x1A, 0x1B, 0x20].includes(element)) {
+                    const chIdx = p2;
+                    if (chIdx >= 0 && chIdx < 32) {
+                        const ch = this.state.channels[chIdx];
+                        switch (element) {
+                            case 0x1C: // Fader (0-1023)
+                                ch.fader = val14;
+                                changed = true;
+                                break;
+                            case 0x1A: // Mute
+                                ch.mute = (val7 === 0);
+                                changed = true;
+                                break;
+                            case 0x1B: // Pan
+                                ch.pan = (message[9] === 0x7F) ? (64 - (128 - val7)) : (64 + val7);
+                                changed = true;
+                                break;
+                            case 0x20: // EQ
+                                if (p1 === 0x0F) {
+                                    ch.eqOn = (val7 === 1);
+                                    changed = true;
+                                } else {
+                                    const revMap = {
+                                        0x01: { b: 'low', p: 'q' }, 0x02: { b: 'low', p: 'freq' }, 0x03: { b: 'low', p: 'gain' },
+                                        0x04: { b: 'lmid', p: 'q' }, 0x05: { b: 'lmid', p: 'freq' }, 0x06: { b: 'lmid', p: 'gain' },
+                                        0x07: { b: 'hmid', p: 'q' }, 0x08: { b: 'hmid', p: 'freq' }, 0x09: { b: 'hmid', p: 'gain' },
+                                        0x0A: { b: 'high', p: 'q' }, 0x0B: { b: 'high', p: 'freq' }, 0x0C: { b: 'high', p: 'gain' }
+                                    };
+                                    const m = revMap[p1];
+                                    if (m) {
+                                        let finalVal = val7;
+                                        if (m.p === 'q') finalVal = Math.round((val7 / 39) * 127);
+                                        if (m.p === 'gain') {
+                                            const rawG = (message[9] === 0x7F) ? -((0x7F - message[11]) * 128 + (0x80 - message[12])) : val14;
+                                            finalVal = Math.round(((rawG + 180) / 360) * 127);
+                                        }
+                                        ch.eq[m.b][m.p] = finalVal;
+                                        changed = true;
+                                    }
+                                }
+                                break;
                         }
-                    } else if (addrL === 0x0F) { // EQ On/Off
-                        ch.eqOn = (val === 1);
-                        changed = true;
                     }
                 }
+                else if (element === 0x4F) { this.state.master.fader = val14; changed = true; }
+                else if (element === 0x4D) { this.state.master.mute = (val7 === 0); changed = true; }
             }
-            // Master (Area 0x00)
-            else if (area === 0x00) {
-                if (addrH === 0x4F) { this.state.master.fader = val; changed = true; }
-                else if (addrH === 0x4D) { this.state.master.mute = (val === 0); changed = true; }
+
+            // B: System Parameter Changes (SELECTION 09 18)
+            else if (message[4] === 0x0D && message[6] === 0x09 && message[7] === 0x18) {
+                const val = message[12];
+                this.state.selectedChannel = (val === 56) ? 'master' : (val + 1);
+                console.log(`📡 Mixer Selection -> ${this.state.selectedChannel}`);
+                changed = true;
             }
         }
 
@@ -207,18 +226,14 @@ class Yamaha01V96Controller {
     }
 
     setFader(channel, value) {
-        if (!this.connected) {
-            console.warn('❌ Fader skipped: Not connected');
-            return;
-        }
-
         if (!this.connected) return;
 
-        // Fader data: mixer uses 4 bytes
+        // Fader data: mixer uses 4 bytes [D0 D1 D2 D3]
+        // From observation: high 3 bits in D2, low 7 bits in D3
         const dataBytes = [
-            (value >> 7) & 0x07, // High bits (usually very small for 10-bit)
-            (value >> 0) & 0x7F, // Middle bits
-            0x00, 0x00           // Padding
+            0x00, 0x00,          // D0, D1
+            (value >> 7) & 0x7F, // D2
+            value & 0x7F         // D3
         ];
 
         let msg;
@@ -344,27 +359,33 @@ class Yamaha01V96Controller {
 
     async deepSync() {
         if (!this.connected) return;
-        console.log("🔄 Starting Deep Sync (Looping all channels)...");
+        console.log("🔄 Starting DEEP Sync (Full Mixer Retrieval)...");
 
         const elements = [
-            { id: 0x1C, name: 'Fader' },
-            { id: 0x1A, name: 'Mute' },
-            { id: 0x1B, name: 'Pan' }
+            { id: 0x1C, name: 'Fader', count: 32, p1: 0x00 },
+            { id: 0x1A, name: 'Mute', count: 32, p1: 0x00 },
+            { id: 0x1B, name: 'Pan', count: 32, p1: 0x00 },
+            { id: 0x20, name: 'EQToggle', count: 32, p1: 0x0F }, // EQ On/Off
         ];
 
-        for (const el of elements) {
-            for (let i = 0; i < 32; i++) {
-                // Parameter Request Format: F0 43 30 3E 7F 01 [Element] [P1] [P2] F7
-                const msg = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, el.id, 0x00, i, 0xF7];
-                this.output.sendMessage(msg);
-                if (this.onRawMidi) this.onRawMidi(msg, true);
+        // Add all 12 EQ Parameters per channel
+        for (let p = 1; p <= 12; p++) {
+            elements.push({ id: 0x20, name: `EQ_P${p}`, count: 32, p1: p });
+        }
 
-                // Throttled delay to not overwhelm mixer
-                await new Promise(r => setTimeout(r, 50));
+        // Add Masters
+        elements.push({ id: 0x4F, name: 'MasterFader', count: 1, p1: 0x00 });
+        elements.push({ id: 0x4D, name: 'MasterMute', count: 1, p1: 0x00 });
+
+        for (const el of elements) {
+            for (let i = 0; i < el.count; i++) {
+                const msg = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, el.id, el.p1, i, 0xF7];
+                this.output.sendMessage(msg);
+                await new Promise(r => setTimeout(r, 30)); // 30ms is usually fine
             }
         }
 
-        console.log("✅ Deep Sync Loop Finished");
+        console.log("✅ Deep Sync Complete");
     }
 
     disconnect() {

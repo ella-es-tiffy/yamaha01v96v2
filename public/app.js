@@ -503,6 +503,13 @@ class YamahaTouchRemote {
                     fader: preserveMasterFader ? this.state.master.fader : newState.master.fader
                 };
 
+                // Sync UI Selection from hardware
+                if (newState.selectedChannel !== undefined && this.selectedChannel !== newState.selectedChannel) {
+                    this.selectedChannel = newState.selectedChannel;
+                    this.renderMixer();
+                    this.renderEQ();
+                }
+
                 this.syncFaders();
                 this.syncEQToSelected();
             } else if (data.type === 'meters') {
