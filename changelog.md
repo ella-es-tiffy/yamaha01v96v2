@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.75d] - 2024-12-24
+## [v0.76d] - 2024-12-24
+### Added
+- **Developer Panel**: Added a safety warning for the "METER REFRESH RATE" setting. It warns about potential MIDI stream crashes and the necessary mixer restart if the interval is set too low.
+
+## [v0.75d] - 2024-12-24 (Previous)
 ### Changed
 - **EQ Section**: Refined Header design. Large, high-contrast **EQ [CH]** indicator and a very thin, letter-spaced "4-Band Parametric Equalizer" sub-label for a more premium hardware look.
 
