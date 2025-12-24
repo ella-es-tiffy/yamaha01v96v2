@@ -150,6 +150,17 @@ class YamahaTouchRemote {
             const constrainedY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
             const value = Math.round((1 - (constrainedY / rect.height)) * 1023);
             this.updateFaderUI(chId, value);
+
+            // Update local state to prevent snap-back
+            if (chId === 'master') {
+                this.state.master.fader = value;
+            } else {
+                const chIdx = parseInt(chId) - 1;
+                if (this.state.channels[chIdx]) {
+                    this.state.channels[chIdx].fader = value;
+                }
+            }
+
             this.send('setFader', { channel: chId, value });
         };
 
