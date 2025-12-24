@@ -1,6 +1,11 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.97d] - 2024-12-24
+## [v0.98d] - 2024-12-24
+### Fixed
+- **Core UI**: Finally removed the stubborn legacy block inside `onMove` that was causing `ReferenceError: band is not defined`.
+- **Status**: The pointer interaction logic is now clean and exclusively uses the centralized `handleEQChange` method. All knobs should again be fully functional and stable.
+
+## [v0.97d] - 2024-12-24 (Previous)
 ### Fixed
 - **Core UI**: Fixed a `ReferenceError` (undefined variables `band`/`chObj`) in the pointer interaction logic that caused **all EQ knobs (wheels) to become unresponsive**.
 - **Cause**: Redundant legacy logic for HPF switching was left in the `onMove` handler after moving it to the centralized `handleEQChange` function.

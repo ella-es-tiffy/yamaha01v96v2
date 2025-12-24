@@ -159,7 +159,7 @@ class YamahaTouchRemote {
             </div>
             <div style="display: flex; gap: 5px; flex-direction: column;">
                 <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.96d</span>
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.98d</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
@@ -451,17 +451,6 @@ class YamahaTouchRemote {
                         const delta = (startY - me.clientY) * 0.6;
                         let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
 
-                        // HPF BINARY SWITCH LOGIC (Q=0)
-                        if (band === 'low' && chObj && chObj.eq[band] && chObj.eq[band].q === 0) {
-                            // Directional Toggle: Only toggle if moving in the 'other' direction
-                            if (startVal < 64) {
-                                // Currently OFF: Only toggle ON if moving UP
-                                val = (delta > 0) ? 127 : 0;
-                            } else {
-                                // Currently ON: Only toggle OFF if moving DOWN
-                                val = (delta < 0) ? 0 : 127;
-                            }
-                        }
                         this.handleEQChange(knob, val, startVal);
                     }
                 };
