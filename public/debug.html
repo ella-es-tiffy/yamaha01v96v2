@@ -243,7 +243,7 @@
 
                 if (showChangesOnly && !changed) return; // Skip unchanged if filter active
 
-                logMidi(data.data, changed);
+                logMidi(data.data, changed, data.isOutgoing);
             } else if (data.type === 'state') {
                 logState(data.data);
             } else if (data.type === 'meters') {
@@ -268,7 +268,7 @@
             showChangesOnly = document.getElementById('show-changes-only').checked;
         }
 
-        function logMidi(msg, changed = false) {
+        function logMidi(msg, changed = false, isOutgoing = false) {
             const hex = msg.map(b => b.toString(16).padStart(2, '0')).join(' ');
             const type = msg[0] === 0xF0 ? 'sysex' : (msg[0] >= 0xB0 && msg[0] <= 0xBF) ? 'cc' : 'other';
 
@@ -283,10 +283,14 @@
                 entry.className = 'log-entry meter';
             }
 
-            // Highlight changed messages
-            const changeIndicator = changed ? '<span style="background:#f00;padding:2px 5px;margin-right:5px;">NEW</span>' : '';
+            const direction = isOutgoing ?
+                '<span style="color:#fff; background:#555; padding:0 4px; margin-right:5px; border-radius:2px;">OUT</span>' :
+                '<span style="color:#0f0; border:1px solid #0f0; padding:0 4px; margin-right:5px; border-radius:2px;">IN</span>';
 
-            entry.innerHTML = `${changeIndicator}[${new Date().toLocaleTimeString()}] <strong>${label}</strong> (${msg.length}B): ${hex.substring(0, 100)}${hex.length > 100 ? '...' : ''}`;
+            // Highlight changed messages
+            const changeIndicator = changed ? '<span style="background:#f00; color:#fff; padding:0 4px; margin-right:5px;">NEW</span>' : '';
+
+            entry.innerHTML = `${direction}${changeIndicator}[${new Date().toLocaleTimeString()}] <strong>${label}</strong>: ${hex}`;
 
             const log = document.getElementById('midi-log');
             log.appendChild(entry);
