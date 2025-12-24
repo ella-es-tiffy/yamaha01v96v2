@@ -45,6 +45,7 @@ wss.on('connection', (ws) => {
             else if (data.type === 'setAtt') yamaha.setAttenuation(data.channel, data.value);
             else if (data.type === 'setEQType') yamaha.setEQType(data.channel, data.value);
             else if (data.type === 'resetEQ') yamaha.resetEQ(data.channel);
+            else if (data.type === 'recallEQ') yamaha.recallEQ(data.channel, data.preset);
             else if (data.type === 'setSelectChannel') yamaha.setSelectedChannel(data.channel);
             else if (data.type === 'setMeterInterval') yamaha.setMeterInterval(data.value, data.range);
             else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);

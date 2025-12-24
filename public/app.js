@@ -140,7 +140,7 @@ class YamahaTouchRemote {
 
         const innerGrid = document.createElement('div');
         innerGrid.style.display = 'grid';
-        innerGrid.style.gridTemplateColumns = '100px 100px 1fr';
+        innerGrid.style.gridTemplateColumns = '100px 100px 100px 1fr';
         innerGrid.style.gap = '20px';
         innerGrid.style.alignItems = 'center';
         innerGrid.style.padding = '10px';
@@ -174,6 +174,19 @@ class YamahaTouchRemote {
                 </div>
                 <button id="btn-eq-reset" style="margin-top: 4px; font-size: 0.5rem; padding: 4px; background: #330000; border: 1px solid #500; color: #f88; border-radius: 2px; cursor: pointer; font-weight: bold;">RESET</button>
             </div>
+
+            <div style="display: flex; gap: 5px; flex-direction: column; align-items: center;">
+                <div style="display: flex; align-items: center; width: 100%; gap: 8px; margin-bottom: 2px;">
+                    <div style="flex: 1; height: 1px; background: #444; position: relative;"><div style="position: absolute; left: 0; top: 0; width: 1px; height: 4px; background: #444;"></div></div>
+                    <span class="eq-label" style="font-size: 0.6rem; color: #777; letter-spacing: 1px; font-weight: bold; white-space: nowrap;">PRESET</span>
+                    <div style="flex: 1; height: 1px; background: #444; position: relative;"><div style="position: absolute; right: 0; top: 0; width: 1px; height: 4px; background: #444;"></div></div>
+                </div>
+                <div class="value-display" id="val-eq-preset" style="width: 100%; height: 24px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--accent); border-radius: 3px; box-shadow: inset 0 0 10px rgba(0,210,255,0.2); font-family: monospace; font-weight: bold;">042</div>
+                <div style="display: flex; gap: 4px; width: 100%; margin-top: 2px;">
+                    <button class="lib-btn" id="btn-lib-prev" style="flex:1; font-size: 0.6rem; padding: 2px; background: #222; border: 1px solid #333; color: #777; border-radius: 2px; cursor: pointer;">◀</button>
+                    <button class="lib-btn" id="btn-lib-next" style="flex:1; font-size: 0.6rem; padding: 2px; background: #222; border: 1px solid #333; color: #777; border-radius: 2px; cursor: pointer;">▶</button>
+                </div>
+            </div>
             <div></div>
         `;
 
@@ -194,29 +207,70 @@ class YamahaTouchRemote {
         // This tab will be visible when the cover is up (open)
         globalRow.appendChild(closeTab);
 
-        cover.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!cover.classList.contains('open')) {
-                cover.classList.add('open');
-                closeTab.style.display = 'block';
-                setTimeout(() => closeTab.style.top = '0px', 10);
-            }
-        });
+        if (cover && globalRow) {
+            cover.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!cover.classList.contains('open')) {
+                    cover.classList.add('open');
+                    closeTab.style.display = 'block';
+                    setTimeout(() => closeTab.style.top = '0px', 10);
+                }
+            });
 
-        closeTab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            cover.classList.remove('open');
-            closeTab.style.top = '-25px';
-            setTimeout(() => closeTab.style.display = 'none', 300);
-        });
-
-        // Keep auto-close on mouseleave for convenience
-        globalRow.addEventListener('mouseleave', () => {
-            if (cover.classList.contains('open')) {
+            closeTab.addEventListener('click', (e) => {
+                e.stopPropagation();
                 cover.classList.remove('open');
                 closeTab.style.top = '-25px';
                 setTimeout(() => closeTab.style.display = 'none', 300);
+            });
+
+            globalRow.addEventListener('mouseleave', () => {
+                if (cover.classList.contains('open')) {
+                    cover.classList.remove('open');
+                    closeTab.style.top = '-25px';
+                    setTimeout(() => closeTab.style.display = 'none', 300);
+                }
+            });
+        }
+
+        // --- PRESET HANDLERS ---
+        const presetLabel = innerGrid.querySelector('#val-eq-preset');
+        let currentPresetIdx = 40; // Displays 041 (tiff sub)
+        const presets = [
+            { id: "001", name: "Bass Drum 1" },
+            { id: "025", name: "Male Vocal 1" },
+            { id: "041", name: "tiff sub" }
+        ];
+
+        const updatePresetDisplay = () => {
+            const p = presets.find(p => parseInt(p.id) === currentPresetIdx + 1) || { id: (currentPresetIdx + 1).toString().padStart(3, '0'), name: '-- EMPTY --' };
+            if (presetLabel) {
+                presetLabel.innerHTML = `
+                    <span style="font-size: 0.4rem; color: #666; margin-right: 5px;">${p.id}</span>
+                    <span style="font-size: 0.6rem;">${p.name.toUpperCase()}</span>
+                `;
             }
+        };
+
+        updatePresetDisplay();
+
+        presetLabel?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.openPresetBrowser();
+        });
+
+        innerGrid.querySelector('#btn-lib-prev')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentPresetIdx = Math.max(0, currentPresetIdx - 1);
+            updatePresetDisplay();
+            this.send('recallEQ', { channel: this.selectedChannel, preset: currentPresetIdx + 1 });
+        });
+
+        innerGrid.querySelector('#btn-lib-next')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentPresetIdx = Math.min(127, currentPresetIdx + 1);
+            updatePresetDisplay();
+            this.send('recallEQ', { channel: this.selectedChannel, preset: currentPresetIdx + 1 });
         });
 
         globalRow.appendChild(innerGrid);
@@ -587,6 +641,78 @@ class YamahaTouchRemote {
 
         const label = document.getElementById('sel-ch-label');
         if (label) label.innerText = this.selectedChannel;
+    }
+
+    openPresetBrowser() {
+        const overlay = document.getElementById('preset-browser-overlay');
+        const list = document.getElementById('preset-list');
+        const closeBtn = document.getElementById('close-preset-modal');
+        if (!overlay || !list) return;
+
+        const presets = [
+            { id: 1, name: "Bass Drum 1" },
+            { id: 2, name: "Bass Drum 2" },
+            { id: 3, name: "Snare Drum 1" },
+            { id: 4, name: "Snare Drum 2" },
+            { id: 5, name: "Tom-tom 1" },
+            { id: 6, name: "Tom-tom 2" },
+            { id: 7, name: "Tom-tom 3" },
+            { id: 8, name: "Hi-hat" },
+            { id: 9, name: "Cymbals" },
+            { id: 10, name: "Percussion" },
+            { id: 11, name: "All Around" },
+            { id: 12, name: "Guit.ELEC. 1" },
+            { id: 13, name: "Guit.ELEC. 2" },
+            { id: 14, name: "Guit.ACOUS." },
+            { id: 15, name: "Bass ELEC. 1" },
+            { id: 16, name: "Bass ELEC. 2" },
+            { id: 17, name: "Bass SYNTH 1" },
+            { id: 18, name: "Bass SYNTH 2" },
+            { id: 19, name: "Piano 1" },
+            { id: 20, name: "Piano 2" },
+            { id: 21, name: "Organ" },
+            { id: 22, name: "Strings 1" },
+            { id: 23, name: "Strings 2" },
+            { id: 24, name: "Brass" },
+            { id: 25, name: "Male Vocal 1" },
+            { id: 26, name: "Male Vocal 2" },
+            { id: 27, name: "Female Vo. 1" },
+            { id: 28, name: "Female Vo. 2" },
+            { id: 29, name: "Chorus 1" },
+            { id: 30, name: "Chorus 2" },
+            { id: 31, name: "Chorus 3" },
+            { id: 32, name: "Speech 1" },
+            { id: 33, name: "Speech 2" },
+            { id: 34, name: "Radio" },
+            { id: 35, name: "Telephone" },
+            { id: 36, name: "BGM" },
+            { id: 37, name: "Karaoke" },
+            { id: 38, name: "All Around" },
+            { id: 39, name: "All Around" },
+            { id: 40, name: "All Around" },
+            { id: 41, name: "tiff sub" },
+            { id: 44, name: "flashstore" }
+        ];
+
+        if (closeBtn) closeBtn.onclick = () => overlay.classList.remove('active');
+
+        list.innerHTML = '';
+        for (let i = 1; i <= 127; i++) {
+            const known = presets.find(p => p.id === i);
+            const item = document.createElement('div');
+            item.className = `preset-item ${known ? 'filled' : ''}`;
+            item.innerHTML = `
+                <span class="id">${i.toString().padStart(3, '0')}</span>
+                <span class="name">${known ? known.name.toUpperCase() : '-- EMPTY --'}</span>
+            `;
+            item.addEventListener('click', () => {
+                this.send('recallEQ', { channel: this.selectedChannel, preset: i });
+                overlay.classList.remove('active');
+            });
+            list.appendChild(item);
+        }
+
+        overlay.classList.add('active');
     }
 
     updateKnobAddresses() {

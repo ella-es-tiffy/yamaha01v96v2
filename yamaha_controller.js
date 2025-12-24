@@ -100,11 +100,17 @@ class Yamaha01V96Controller {
 
     async requestInitialState() {
         if (!this.connected) return;
-        console.log('📥 Skipping Deep Sync - Mixer does not respond to parameter requests');
-        // The 01V96 does not respond to parameter request SysEx messages.
-        // It only sends live updates when controls are physically moved.
-        // Therefore, initial sync is not possible via MIDI.
-        // Faders will update as soon as they are moved on the mixer.
+        console.log('📥 Requesting EQ Library Bulk Dump (to get Preset Names)...');
+
+        const headers = [0x10, 0x20, 0x30];
+        headers.forEach((h, i) => {
+            setTimeout(() => {
+                if (this.output) {
+                    try { this.output.sendMessage([0xF0, 0x43, h, 0x3E, 0x02, 0x02, 0xF7]); } catch (e) { }
+                    try { this.output.sendMessage([0xF0, 0x43, h, 0x3E, 0x0E, 0x02, 0xF7]); } catch (e) { }
+                }
+            }, i * 500);
+        });
     }
 
     handleMidiMessage(deltaTime, message) {
@@ -141,8 +147,28 @@ class Yamaha01V96Controller {
             meterChanged = true;
         }
 
+        // DEBUG: Logging ALL Yamaha SysEx (3E and 7E)
+        if (message[0] === 0xF0 && message[1] === 0x43) {
+            const fs = require('fs');
+            const logLine = message.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ') + '\n';
+            try { fs.appendFileSync('dev/startup_log.txt', logLine); } catch (e) { }
+
+            const ascii = message.map(b => (b >= 32 && b < 127) ? String.fromCharCode(b) : '.').join('');
+            if (ascii.toLowerCase().includes('test')) {
+                console.log(`\n🎯 SNIFFED "test" in SysEx: ${message.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`);
+            }
+        }
+
         // 2. OPTIMIZED SYSEX PARSING (The "Yellow" messages)
         if (message[0] === 0xF0 && message[1] === 0x43 && message[3] === 0x3E) {
+            const fs = require('fs');
+            const logLine = message.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ') + '\n';
+            try { fs.appendFileSync('dev/startup_log.txt', logLine); } catch (e) { }
+
+            const ascii = message.map(b => (b >= 32 && b < 127) ? String.fromCharCode(b) : '.').join('');
+            if (ascii.toLowerCase().includes('test')) {
+                console.log(`\n🎯 SNIFFED "test" in SysEx: ${message.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`);
+            }
 
             // A: Parameter Changes (Element based)
             let markerPos = -1;
@@ -520,6 +546,16 @@ class Yamaha01V96Controller {
             this.setEQ(channel, s.band, 'freq', s.f);
             this.setEQ(channel, s.band, 'gain', s.g);
         });
+    }
+
+    recallEQ(channel, presetIdx) {
+        if (!this.connected) return;
+        // 01V96 Library Recall SysEx: F0 43 1n 3E 12 [LibSlot] [Idx] F7
+        // EQ Library Slot = 0x02
+        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x12, 0x02, presetIdx, 0xF7];
+        this.output.sendMessage(msg);
+        if (this.onRawMidi) this.onRawMidi(msg, true);
+        console.log(`📚 Recalling EQ Library Preset ${presetIdx} to current selection`);
     }
 
     async deepSync() {

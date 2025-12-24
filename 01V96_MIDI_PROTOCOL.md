@@ -75,4 +75,43 @@ Live levels are requested once to start the stream.
 
 ---
 
+## 4. Library & Recall
+Library recall allows loading saved settings (EQ, Dynamics, Effects) to the currently selected channel or a specific slot.
+
+### 4.1 Recall Command
+Format: `F0 43 1n 3E 12 [Slot] [LibraryNumber] F7`
+
+| Slot | Target | Notes |
+| :--- | :--- | :--- |
+| **0x01** | Scene | Recalls a full Scene |
+| **0x02** | **EQ Library** | Recalls EQ to selected channel |
+| **0x03** | Dynamics | Recalls Dyn 1/2 |
+| **0x04** | Effects | Recalls FX engines |
+
+### 4.2 EQ Library Preset Map
+Factory presets (1-40) and User presets (41-127).
+
+| Number | Hex ID | Preset Name |
+| :--- | :--- | :--- |
+| **001-002** | 0x00-01 | Bass Drum 1, 2 |
+| **003-004** | 0x02-03 | Snare Drum 1, 2 |
+| **005-007** | 0x04-06 | Tom-tom 1, 2, 3 |
+| **008-010** | 0x07-09 | Hi-hat, Cymbals, Percussion |
+| **012-014** | 0x0B-0D | Guitar (Elec 1/2, Acous) |
+| **015-018** | 0x0E-11 | Bass (Elec 1/2, Synth 1/2) |
+| **019-020** | 0x12-13 | Piano 1, 2 |
+| **021** | 0x14 | Organ |
+| **022-023** | 0x15-16 | Strings 1, 2 |
+| **024** | 0x17 | Brass |
+| **025-026** | 0x18-19 | Male Vocal 1, 2 |
+| **027-028** | 0x1A-1B | Female Vo. 1, 2 |
+| **029-031** | 0x1C-1E | Chorus 1, 2, 3 |
+| **032-033** | 0x1F-20 | Speech 1, 2 |
+| **034-035** | 0x21-22 | Radio, Telephone |
+| **036-037** | 0x23-24 | BGM, Karaoke |
+| **041** | **0x28** | **tiff sub** (User Preset) |
+| **044** | **0x2B** | **flashstore** (User Preset) |
+
+---
+
 *Captured and documented during the "Neko Yamaha" Pair Programming Session - 2025.*

@@ -8,7 +8,6 @@ Web-basierte Fernsteuerung für den Yamaha 01V96 V2 Digital Mixer via MIDI über
 - **Gerät:** Yamaha 01V96 V2 Digital Mixing Console
 - **Verbindung:** VirtualHere USB-over-IP Bridge
 - **USB Vendor ID:** 0x0499 (Yamaha Corporation)
-- **USB Product ID:** 0x5008
 - **MIDI Ports:** 8 Input / 8 Output Ports erkannt
 
 ### Software
@@ -175,7 +174,6 @@ yamaha_midi/
 ### USB Connection
 ```
 Vendor: YAMAHA Corporation (0x0499)
-Product: YAMAHA 01V96 (0x5008)
 Version: 1.01
 Speed: 12 Mb/s (USB 1.1)
 Driver: AppleUSBUserHCI (VirtualHere)
