@@ -43,3 +43,12 @@ Dieses Dokument dient als verbindliche Anleitung für die KI-Entwickler (Antigra
     *   Fix Versuch 2 -> v0.52
     *   ... -> v0.599
 *   **Ziel:** Dies reflektiert den Trial-and-Error-Prozess bei Bugfixes, ohne die Hauptversionsnummern zu verbrauchen.
+
+## 8. Interactive Commit Workflow
+*   **Bestätigung (Confirmation):** Kein automatischer Git Push von neuen Features/Fixes ohne explizite Bestätigung oder neuen Auftrag des Users.
+*   **Prozess:**
+    1.  User: "Mach Funktion A".
+    2.  Agent: Setzt um und meldet: "Bitte testen". (KEIN COMMIT/PUSH).
+    3.  User: "Test OK. Mach Funktion B".
+    4.  Agent: **JETZT** commit/push Funktion A -> Dann Start Funktion B.
+*   **Ziel:** Verhindert, dass kaputter oder ungetesteter Code ins Repository gelangt. Der `main` Branch soll immer "Stable" sein.
