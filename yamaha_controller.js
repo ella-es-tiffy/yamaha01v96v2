@@ -203,9 +203,10 @@ class Yamaha01V96Controller {
                                     else {
                                         const m = {
                                             0x01: { b: 'low', p: 'q' }, 0x02: { b: 'low', p: 'freq' }, 0x03: { b: 'low', p: 'gain' },
-                                            0x04: { b: 'lmid', p: 'q' }, 0x05: { b: 'lmid', p: 'freq' }, 0x06: { b: 'lmid', p: 'gain' },
-                                            0x07: { b: 'hmid', p: 'q' }, 0x08: { b: 'hmid', p: 'freq' }, 0x09: { b: 'hmid', p: 'gain' },
-                                            0x0A: { b: 'high', p: 'q' }, 0x0B: { b: 'high', p: 'freq' }, 0x0C: { b: 'high', p: 'gain' }
+                                            0x04: { b: 'high', p: 'gain' }, 0x05: { b: 'lmid', p: 'q' }, 0x06: { b: 'lmid', p: 'freq' },
+                                            0x07: { b: 'lmid', p: 'gain' }, 0x08: { b: 'hmid', p: 'q' }, 0x09: { b: 'hmid', p: 'freq' },
+                                            0x0A: { b: 'hmid', p: 'gain' }, 0x0B: { b: 'high', p: 'q' }, 0x0C: { b: 'high', p: 'freq' },
+                                            0x0D: { b: 'high', p: 'gain' }
                                         }[p1];
                                         if (m && ch.eq) {
                                             let fv = val7;
@@ -381,9 +382,9 @@ class Yamaha01V96Controller {
         // Corrected based on Logs: Q=1, Freq=2, Gain=3
         const paramMap = {
             'low': { q: 0x01, freq: 0x02, gain: 0x03 },
-            'lmid': { q: 0x04, freq: 0x05, gain: 0x06 },
-            'hmid': { q: 0x07, freq: 0x08, gain: 0x09 },
-            'high': { q: 0x0A, freq: 0x0B, gain: 0x0C }
+            'lmid': { q: 0x05, freq: 0x06, gain: 0x07 },
+            'hmid': { q: 0x08, freq: 0x09, gain: 0x0A },
+            'high': { q: 0x0B, freq: 0x0C, gain: 0x0D }
         };
 
         const p1 = paramMap[band]?.[type];

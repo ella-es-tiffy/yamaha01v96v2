@@ -159,7 +159,7 @@ class YamahaTouchRemote {
             </div>
             <div style="display: flex; gap: 5px; flex-direction: column;">
                 <span class="version"
-                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.985d</span>
+                    style="font-size: 0.6rem; color: #666; margin-left: 5px; vertical-align: top;">v0.985d-Fix3</span>
                 <div style="display: flex; gap: 4px;">
                     <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
                     <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>

@@ -28,9 +28,9 @@ Format: `F0 43 10 3E 7F 01 [Element] [P1] [P2] [D0 D1 D2 D3] F7`
 | **0x0F** | EQ On/Off | Global | 1 = ON, 0 = OFF |
 | **0x0E** | EQ Type | Global | 0 = Type I, 1 = Type II |
 | **0x01/02/03** | Q / Freq / Gain | **Low** | Gain is signed (18.0dB to -18.0dB) |
-| **0x04/05/06** | Q / Freq / Gain | **L-Mid** | |
-| **0x07/08/09** | Q / Freq / Gain | **H-Mid** | |
-| **0x0A/0B/0C** | Q / Freq / Gain | **High** | |
+| **0x05/06/07** | Q / Freq / Gain | **L-Mid** | **Corrected:** Gain=0x07, Q=0x05, Freq=0x06 |
+| **0x08/09/0A** | Q / Freq / Gain | **H-Mid** | **Corrected:** Gain=0x0A, Q=0x08, Freq=0x09 |
+| **0x0B/0C/0D** | Q / Freq / Gain | **High** | **Corrected:** Gain=0x0D, Q=0x0B, Freq=0x0C |
 
 ### 1.2 Dynamics 1 - Gate (Element 0x1E)
 | P1 | Parameter | Notes |

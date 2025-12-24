@@ -52,3 +52,8 @@ Dieses Dokument dient als verbindliche Anleitung für die KI-Entwickler (Antigra
     3.  User: "Test OK. Mach Funktion B".
     4.  Agent: **JETZT** commit/push Funktion A -> Dann Start Funktion B.
 *   **Ziel:** Verhindert, dass kaputter oder ungetesteter Code ins Repository gelangt. Der `main` Branch soll immer "Stable" sein.
+
+## 9. Dokumentations-Pflege (MIDI Protocol)
+*   **Aktualität ist Pflicht:** Sobald eine MIDI-Funktion, eine Parameter-ID oder ein SysEx-Verhalten erfolgreich reverse-engineered, gefixt oder verifiziert wurde (z.B. EQ IDs, Fader Logic), muss dies **SOFORT** in `01V96_MIDI_PROTOCOL.md` dokumentiert werden.
+*   **Kein verlorenes Wissen:** Zukünftige Agenten dürfen nicht gezwungen sein, Fakten neu zu entdecken, die wir bereits validiert haben.
+*   **Format:** Aktualisiere die entsprechenden Tabellen oder Sektionen in `01V96_MIDI_PROTOCOL.md` präzise und lösche veraltete Annahmen.

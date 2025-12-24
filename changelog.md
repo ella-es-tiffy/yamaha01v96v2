@@ -1,5 +1,13 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v0.985d-Fix2] - 2024-12-24 (Hotfix)
+### Fixed
+- **EQ Parameter Mapping**: Corrected the Gain Parameter IDs for L-Mid, H-Mid, and High bands based on hardware verification "1 4 2 3".
+  - **L-Mid Gain**: ID 0x07 (was 0x04)
+  - **H-Mid Gain**: ID 0x0A (was 0x07)
+  - **High Gain**: ID 0x04 (was 0x0A)
+  - *(Low Band Gain remains 0x03)*
+
 ## [v0.985d] - 2024-12-24 (Bugfix/Feature)
 ### Fixed
 - **EQ Section Logic Restriction**: The Save/Restore/Backup logic (for Gain/HPF) is now **strictly limited to the Low Band**.

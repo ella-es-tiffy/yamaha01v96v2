@@ -3,3 +3,4 @@ agents.md
 *.log
 .DS_Store
 .env
+!agents.md
