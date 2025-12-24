@@ -74,7 +74,12 @@ const path = require('path');
 const HTTP_PORT = 8009;
 
 const server = http.createServer((req, res) => {
-    let filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+    let filePath;
+    if (req.url.startsWith('/dev/')) {
+        filePath = path.join(__dirname, 'dev', req.url.replace('/dev/', ''));
+    } else {
+        filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+    }
     const extname = path.extname(filePath);
     let contentType = 'text/html';
     switch (extname) {

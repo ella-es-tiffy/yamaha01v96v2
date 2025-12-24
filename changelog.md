@@ -1,6 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
-## [v0.77d] - 2024-12-24
+## [v0.78d] - 2024-12-24
+### Fixed
+- **Server**: Fixed routing for the `/dev` folder. Static files inside `/dev` (like the Sniffer) are now correctly served, resolving the 404 error.
+
+## [v0.77d] - 2024-12-24 (Previous)
 ### Added
 - **Developer Tools**: Created "Meter-Stream Sniffer" (`/dev/meter_sniffer.html`). This external diagnostic tool monitors MIDI traffic density and detects stream dropouts (Heartbeat) to debug mixer buffer behavior.
 
