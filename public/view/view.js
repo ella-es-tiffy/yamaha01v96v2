@@ -525,16 +525,7 @@ ProView.prototype.connect = function () {
 
 ProView.prototype.syncLockState = function () {
     var isLocked = !!this.settings.uiLocked;
-    var lockOverlay = document.getElementById('global-lock-overlay');
-    if (lockOverlay) {
-        if (isLocked) {
-            lockOverlay.classList.add('active');
-            document.body.classList.add('mode-lock-active');
-        } else {
-            lockOverlay.classList.remove('active');
-            document.body.classList.remove('mode-lock-active');
-        }
-    }
+    this.toggleLockUI(isLocked);
 };
 
 ProView.prototype.setupEncoder = function () {
@@ -670,8 +661,71 @@ ProView.prototype.renderKnob = function (id, val) {
         ind.style.transformOrigin = '30px 30px';
     }
 
-    var valEl = this.elCache['val-' + id];
     if (valEl) valEl.innerText = val;
+};
+
+// Snapshot Engine for Legacy iOS (Zoom Out Lock)
+ProView.prototype.toggleLockUI = function (locked) {
+    var overlay = document.getElementById('global-lock-overlay');
+    var stage = document.querySelector('.view-stage');
+
+    if (locked) {
+        if (document.getElementById('snapshot-proxy')) return;
+
+        // 1. Clone Stage
+        var clone = stage.cloneNode(true);
+        clone.id = 'snapshot-proxy';
+
+        // 2. Freeze & Position
+        // Must copy computed styles or set explicitly to match exact position
+        var rect = stage.getBoundingClientRect();
+        clone.style.position = 'fixed';
+        clone.style.top = rect.top + 'px';
+        clone.style.left = rect.left + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+        clone.style.zIndex = '9999';
+        clone.style.backgroundColor = '#0a0a0a'; // Match background
+
+        clone.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease';
+        clone.style.transformOrigin = 'center center';
+        clone.style.willChange = 'transform';
+
+        document.body.appendChild(clone);
+
+        // 3. Hide Original
+        stage.style.visibility = 'hidden';
+
+        // 4. Animate (Force reflow)
+        void clone.offsetWidth;
+
+        // Zoom Out Legacy Style (No Rotation)
+        clone.style.transform = 'scale(0.85)';
+        clone.style.opacity = '0.5';
+        clone.style.filter = 'grayscale(0.8)';
+
+        if (overlay) overlay.classList.add('active');
+        document.body.classList.add('mode-lock-active');
+
+    } else {
+        // Unlock
+        var clone = document.getElementById('snapshot-proxy');
+        if (overlay) overlay.classList.remove('active');
+        document.body.classList.remove('mode-lock-active');
+
+        if (clone) {
+            clone.style.transform = 'scale(1)';
+            clone.style.opacity = '1';
+            clone.style.filter = 'none';
+
+            setTimeout(function () {
+                if (clone.parentNode) clone.parentNode.removeChild(clone);
+                stage.style.visibility = '';
+            }, 400); // Sync with transition
+        } else {
+            stage.style.visibility = '';
+        }
+    }
 };
 
 window.addEventListener('load', function () {
