@@ -295,18 +295,6 @@ header.view-header {
     /* flex: 1; REMOVED */
     width: 8px;
     /* Narrower Bar (approx 1/2 of previous) */
-    background: #080808;
-    position: relative;
-    border-bottom: 1px solid #222;
-}
-
-.meter-fill {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 0%;
-    /* Gradient aligned to dB scale: Green to 0dB, Orange to +5dB, Red to Clip */
     background: linear-gradient(to top,
             #34c759 0%,
             /* -60dB (bottom) */
@@ -316,9 +304,22 @@ header.view-header {
             /* +5dB */
             #ff3b30 100%);
     /* Clip */
+    position: relative;
+    border-bottom: 1px solid #222;
+}
+
+.meter-fill {
+    position: absolute;
+    top: 0;
+    /* Curtain from top */
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Initially covers everything */
+    background: #080808;
+    /* Black curtain */
     transition: height 0.05s linear;
     will-change: height;
-    opacity: 0.9;
 }
 
 .meter-fill.clip-mode {

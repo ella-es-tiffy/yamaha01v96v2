@@ -236,7 +236,8 @@ class ProView {
 
             if (el) {
                 const pct = this.getMeterPct(val);
-                el.style.height = `${pct}%`;
+                // Inverted: curtain height = 100% - signal level
+                el.style.height = `${100 - pct}%`;
 
                 // Clip Warning: Glow effect at >+5dB
                 if (val >= 31) {
