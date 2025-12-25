@@ -55,12 +55,12 @@ class ProView {
             const v = (data.v !== undefined) ? data.v : data.value;
 
             if (t === 'me' || t === 'meters') {
-                this.updateMeters(data.d || data.data.channels);
+                const meterData = data.d || data.data;
+                this.updateMeters(meterData.channels || meterData);
             } else if (t === 'state') {
-                // Initial state is still verbose for now
-                const ch2 = data.data.channels[1];
-                if (ch2 && ch2.mute !== undefined) {
-                    this.isMuted = ch2.mute;
+                // Handle Compact State for CH2 Test
+                if (data.m && data.m[1] !== undefined) {
+                    this.isMuted = !!data.m[1];
                     const btn = document.getElementById('test-toggle');
                     if (btn) {
                         btn.classList.toggle('active', !this.isMuted);
@@ -68,6 +68,7 @@ class ProView {
                         btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
                     }
                 }
+                // Later we can loop data.n for Names etc.
             } else if (t === 'r' || t === 'reload') {
                 console.log('[VIEW] Auto-reloading due to file change...');
                 location.reload();

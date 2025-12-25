@@ -119,6 +119,17 @@ class YamahaServer {
     translateModernToLegacy(data) {
         if (data.type === 'meters') return { t: 'me', d: data.data };
         if (data.type === 'reload') return { t: 'r' };
+
+        // COMPACT STATE FOR LEGACY DEVICES (Pro View)
+        if (data.type === 'state') {
+            return {
+                t: 'state',
+                m: data.data.channels.map(ch => ch.mute ? 1 : 0),
+                n: data.data.channels.map(ch => ch.name || ''),
+                f: data.data.channels.map(ch => ch.fader || 0)
+            };
+        }
+
         const revMap = { 'setFader': 'f', 'setMute': 'm', 'setPan': 'p', 'setEQ': 'e' };
         if (revMap[data.type]) {
             return {
