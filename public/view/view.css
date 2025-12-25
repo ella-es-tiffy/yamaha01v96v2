@@ -1,0 +1,228 @@
+/* 
+  YAMAHA 01V96 PRO VIEW - STANDALONE STYLES
+  NOTICE: Optimized specifically for legacy hardware (iOS 12).
+  Decoupled from main style.css to prevent side-effects.
+*/
+:root {
+    --accent: #00d2ff;
+    --bg-dark: #0a0a0a;
+    --bg-main: #0a0a0a;
+    --panel-bg: #141414;
+    --strip-bg: #1a1a1a;
+    --on-green: #34c759;
+    --text-primary: #ffffff;
+    --text-secondary: #888;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
+}
+
+.view-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    padding: 15px;
+}
+
+header.view-header {
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    background: #1a1a1a;
+    border-bottom: 2px solid #333;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.brand {
+    font-weight: 800;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.model {
+    color: var(--accent);
+    font-weight: 300;
+}
+
+#status {
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.view-content {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
+    gap: 15px;
+}
+
+/* Meters Section - Grid Layout for 2x8 */
+.meters-test-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    background: #111;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+    flex: 1;
+    gap: 15px;
+}
+
+.test-meter-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #1a1a1a;
+    border: 1px solid #222;
+    padding: 10px;
+    border-radius: 6px;
+    height: 100%;
+}
+
+.test-meter-track {
+    flex: 1;
+    width: 15px;
+    background: #000;
+    border: 1px solid #222;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.test-meter-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--on-green);
+    transform: scaleY(0);
+    -webkit-transform: scaleY(0);
+    transform-origin: bottom;
+    -webkit-transform-origin: bottom;
+    will-change: transform;
+}
+
+.test-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+/* Sidebar Area */
+.sidebar-test {
+    display: flex;
+    flex-direction: column;
+    width: 180px;
+    gap: 15px;
+}
+
+.encoder-test-area,
+.toggle-test-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #161616;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.section-title {
+    font-size: 0.6rem;
+    font-weight: 900;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.knob-svg {
+    width: 100px;
+    height: 100px;
+    touch-action: none;
+}
+
+.knob-ring-bg {
+    stroke: #222;
+    fill: none;
+    stroke-width: 4;
+}
+
+.knob-ring-val {
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+}
+
+.knob-body {
+    fill: #1a1a1a;
+    stroke: #000;
+    stroke-width: 1;
+}
+
+.knob-indicator {
+    fill: var(--accent);
+    will-change: transform;
+}
+
+#val-test-knob {
+    font-family: monospace;
+    font-weight: 900;
+    color: var(--accent);
+    margin-top: 10px;
+}
+
+/* Toggle Test Button */
+.test-toggle-btn {
+    width: 100%;
+    height: 60px;
+    background: #222;
+    border: 2px solid #333;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #444;
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+.test-toggle-btn.active {
+    background: var(--on-green);
+    border-color: #fff;
+    color: #fff;
+    box-shadow: 0 0 20px var(--on-green);
+}
