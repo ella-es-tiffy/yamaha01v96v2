@@ -267,8 +267,8 @@ class ProView {
             return (val - 29) * 11.66 + 65;
         }
         // -60dB to -5dB (Exponential lower range)
-        // Matches -30dB mark (~20% height) better
-        return Math.pow(val / 29, 1.7) * 65;
+        // Matches -30dB mark better
+        return Math.pow(val / 29, 1.6) * 65;
 
         // Old linear was: return val * 2.24;
     }
