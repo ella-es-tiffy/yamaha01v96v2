@@ -730,6 +730,11 @@ class YamahaTouchRemote {
             unlockSurface?.addEventListener('click', () => {
                 this.send('setUILock', { value: false });
             });
+
+            unlockSurface?.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.send('setUILock', { value: false });
+            }, { passive: false });
         }
     }
 

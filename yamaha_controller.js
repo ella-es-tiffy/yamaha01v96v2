@@ -73,7 +73,11 @@ class Yamaha01V96Controller {
             const savedSettings = await db.getSetting('system_config');
             if (savedSettings) {
                 this.state.settings = { ...this.state.settings, ...savedSettings };
-                console.log(`[DB] System settings restored:`, this.state.settings);
+
+                // CRITICAL: Always reset UI Lock on reboot
+                this.state.settings.uiLocked = false;
+
+                console.log(`[DB] System settings restored (UI Lock reset):`, this.state.settings);
 
                 // Automatically apply loaded metering config
                 this.meterConfig.ms = this.state.settings.meterInterval;
@@ -155,7 +159,10 @@ class Yamaha01V96Controller {
     setUIOption(key, val) {
         if (this.state.settings.hasOwnProperty(key)) {
             this.state.settings[key] = val;
-            this.saveSystemSettings();
+            // Don't persist UI Lock to database to avoid being stuck after reboot
+            if (key !== 'uiLocked') {
+                this.saveSystemSettings();
+            }
             if (this.onStateChange) this.onStateChange(this.state);
         }
     }
