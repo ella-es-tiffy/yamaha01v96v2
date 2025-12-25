@@ -151,38 +151,27 @@ class ProView {
         if (val <= 0) return 0;
         if (val >= 32) return 100;
 
-        // Adjusted Mapping based on -5dB Sinus = Val ~28
-        // We need Val 28 to result in 65% Height (-5dB Marker).
-        // Val 32 is 100%.
+        // Ultra-Steep Mapping v2
+        // Based on feedback: Real -5dB results in display "0dB" (Val ~29 in previous logic).
+        // Target: Val 29 MUST be at 65% height (-5dB Marker).
+        // Remaining range (29->32) covers -5dB -> +10dB (35% delta).
+        // Slope = 11.66% per step.
 
-        // High Range (Val 24-32): Very Steep
-        if (val >= 24) {
-            // Map 24..32 to 45%..100%
-            // Range 8 -> 55%
-            // Slope ~6.8
-            // At 28: 45 + (4 * 6.8) = 45 + 27.2 = 72.2% (Close to 0dB)
-            // Let's force fit:
-            // 32 = 100
-            // 30 = 85 (+5)
-            // 29 = 75 (0)
-            // 28 = 65 (-5)
-
-            // Linear Interpolation for high vals:
-            // (val - 28) * 8.75 + 65
-            // Check 28: 65% (-5dB). PERFECT.
-            // Check 32: 4 * 8.75 + 65 = 35 + 65 = 100%. PERFECT.
-            return (val - 28) * 8.75 + 65;
+        if (val >= 29) {
+            return (val - 29) * 11.66 + 65;
         }
 
-        // Low Range (Val 0-24):
-        // Map 0..24 to 0%..30% (Since 28 is 65%, 24 must be lower, say 30% (-20dB area))
-        // Linear slope: 30/24 = 1.25
-        return val * 1.5; // at 24 -> 36% (-20dB).
+        // Low Range (0-29 maps to 0-65%)
+        return val * 2.24;
     }
 
     valToDB(val) {
-        if (val >= 28) return 'CLIP'; // > +5dB shows CLIP
-        return Math.round((val - 24) * 2.5); // 24=0dB, 2.5 scaling Factor
+        if (val >= 31) return 'CLIP';
+        // Rough estimation for display text
+        // 29 = -5, 32 = +10.
+        // (val - 29) * 5 - 5 ?
+        if (val >= 29) return Math.round((val - 29) * 5 - 5);
+        return Math.round((val - 29) * 3 - 5);
     }
 
     connect() {
