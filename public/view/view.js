@@ -144,9 +144,12 @@ class ProView {
         btn.className = 'peak-btn-vertical';
         btn.innerHTML = 'P<br>E<br>A<br>K'; // Vertical text
         btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.togglePeakHold();
-        }, { passive: true });
+        }, { passive: false });
         btn.addEventListener('click', (e) => {
+            e.stopPropagation();
             this.togglePeakHold();
         });
 
