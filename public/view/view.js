@@ -261,11 +261,16 @@ class ProView {
         if (val <= 0) return 0;
         if (val >= 32) return 100;
 
-        // Ultra-Steep Mapping v2 (Preserved)
+        // Ultra-Steep Mapping v2 (Preserved & Refined)
         if (val >= 29) {
+            // -5dB to Clip (Linear top range)
             return (val - 29) * 11.66 + 65;
         }
-        return val * 2.24;
+        // -60dB to -5dB (Exponential lower range)
+        // Matches -30dB mark (~20% height) better
+        return Math.pow(val / 29, 1.7) * 65;
+
+        // Old linear was: return val * 2.24;
     }
 
     valToDB(val) {
