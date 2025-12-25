@@ -51,7 +51,8 @@ class Yamaha01V96Controller {
                 meterInterval: 500, // Reduced from 8000ms for responsiveness
                 meterBroadcastRate: 150, // How often to send meter data to clients (ms)
                 autoCloseSafety: false,
-                bankOnlyMetering: false
+                bankOnlyMetering: false,
+                uiLocked: false
             }
         };
 

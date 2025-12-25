@@ -98,6 +98,7 @@ class YamahaServer {
                 'setPan': () => y.setPan(data.channel, data.value),
                 'scanPresets': () => y.scanPresets(),
                 'saveEQ': () => y.saveEQ(data.channel, data.preset, data.name),
+                'setUILock': () => y.setUIOption('uiLocked', data.value),
                 'setMeterOffset': () => y.setMeterOffset(data.value),
                 'setUIOption': () => y.setUIOption(data.key, data.value),
                 'getChangelog': () => {
@@ -115,7 +116,7 @@ class YamahaServer {
     }
 
     translateLegacyToModern(data) {
-        const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ' };
+        const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ', 'l': 'setUILock' };
         return {
             type: legacyMap[data.t] || data.t,
             channel: data.c,

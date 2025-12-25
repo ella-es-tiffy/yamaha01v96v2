@@ -724,13 +724,11 @@ class YamahaTouchRemote {
 
         if (lockBtn && lockOverlay) {
             lockBtn.addEventListener('click', () => {
-                lockOverlay.classList.add('active');
-                document.body.classList.add('mode-lock-active');
+                this.send('setUILock', { value: true });
             });
 
             unlockSurface?.addEventListener('click', () => {
-                lockOverlay.classList.remove('active');
-                document.body.classList.remove('mode-lock-active');
+                this.send('setUILock', { value: false });
             });
         }
     }
@@ -1131,6 +1129,14 @@ class YamahaTouchRemote {
 
                     const autoCloseChk = document.getElementById('chk-auto-close-safety');
                     if (autoCloseChk) autoCloseChk.checked = this.autoCloseSafety;
+
+                    // SYNC UI LOCK STATE
+                    const lockOverlay = document.getElementById('global-lock-overlay');
+                    if (lockOverlay) {
+                        const isLocked = newState.settings.uiLocked;
+                        lockOverlay.classList.toggle('active', isLocked);
+                        document.body.classList.toggle('mode-lock-active', isLocked);
+                    }
                 }
 
                 // Handle Dynamic EQ Presets Update

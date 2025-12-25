@@ -26,7 +26,28 @@ class ProView {
         this.wsMessageCount = 0;
         this.lastStatsUpdate = performance.now();
 
+        this.iosVersion = this.getIOSVersion();
+        this.isLegacy = this.iosVersion > 0 && this.iosVersion < 17;
+        if (this.isLegacy) document.body.classList.add('is-legacy');
+
         this.init();
+    }
+
+    getIOSVersion() {
+        if (/iP(hone|od|ad)/.test(navigator.platform)) {
+            const v = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
+            if (v) return parseInt(v[1], 10);
+        }
+        return 0;
+    }
+
+    sendLock(locked) {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+        // Broadcast lock/unlock to all clients
+        this.socket.send(JSON.stringify({
+            t: 'l',
+            v: locked
+        }));
     }
 
 
@@ -38,7 +59,21 @@ class ProView {
         this.connect();
         this.setupEncoder();
         this.setupToggle();
+        this.setupLockUI();
         this.startRaf();
+    }
+
+    setupLockUI() {
+        const unlockSurface = document.querySelector('.unlock-surface');
+        if (unlockSurface) {
+            unlockSurface.addEventListener('click', () => {
+                this.sendLock(false);
+            });
+            unlockSurface.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.sendLock(false);
+            }, { passive: false });
+        }
     }
 
     setupNavigation() {
@@ -445,14 +480,30 @@ class ProView {
                 const meterData = data.d || data.data;
                 this.updateMeters(meterData.channels || meterData);
             } else if (t === 'state') {
-                if (data.s) this.settings = { ...this.settings, ...data.s };
+                if (data.s) {
+                    this.settings = { ...this.settings, ...data.s };
+                    this.syncLockState();
+                }
                 this.updateStatusIndicators(data);
             } else if (t === 'r' || t === 'reload') {
                 location.reload();
             } else if (t === 'setUIOption') {
                 if (data.k === 'meterOffset') this.settings.meterOffset = data.v;
+                if (data.k === 'uiLocked') {
+                    this.settings.uiLocked = data.v;
+                    this.syncLockState();
+                }
             }
         };
+    }
+
+    syncLockState() {
+        const isLocked = !!this.settings.uiLocked;
+        const lockOverlay = document.getElementById('global-lock-overlay');
+        if (lockOverlay) {
+            lockOverlay.classList.toggle('active', isLocked);
+            document.body.classList.toggle('mode-lock-active', isLocked);
+        }
     }
 
     setupEncoder() {
