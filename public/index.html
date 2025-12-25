@@ -141,6 +141,18 @@
                 </div>
 
                 <div class="dev-group">
+                    <label>METER BROADCAST RATE</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="meter-broadcast-slider" min="100" max="1000" value="150" step="10"
+                            style="flex: 1;">
+                        <span id="meter-broadcast-val"
+                            style="width: 55px; font-family: monospace; color: var(--accent);">150ms</span>
+                    </div>
+                    <p style="font-size: 0.5rem; color: #666; margin-top: 5px;">Wie oft der Server Meter-Daten an
+                        Clients sendet (unabhängig von der Poll-Rate).</p>
+                </div>
+
+                <div class="dev-group">
                     <label>METER NOISE GATE (OFFSET)</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="range" id="meter-offset-slider" min="0" max="100" value="0" style="flex: 1;">

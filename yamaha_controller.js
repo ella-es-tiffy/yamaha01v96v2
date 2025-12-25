@@ -49,6 +49,7 @@ class Yamaha01V96Controller {
             settings: {
                 meterOffset: 0,
                 meterInterval: 500, // Reduced from 8000ms for responsiveness
+                meterBroadcastRate: 150, // How often to send meter data to clients (ms)
                 autoCloseSafety: false,
                 bankOnlyMetering: false
             }
@@ -139,6 +140,13 @@ class Yamaha01V96Controller {
 
     setMeterOffset(val) {
         this.state.settings.meterOffset = val;
+        this.saveSystemSettings();
+        if (this.onStateChange) this.onStateChange(this.state);
+    }
+
+    setMeterBroadcastRate(val) {
+        const safeVal = Math.max(100, Math.min(1000, val)); // Clamp to 100-1000ms
+        this.state.settings.meterBroadcastRate = safeVal;
         this.saveSystemSettings();
         if (this.onStateChange) this.onStateChange(this.state);
     }

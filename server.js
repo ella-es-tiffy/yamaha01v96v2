@@ -16,6 +16,7 @@ class YamahaServer {
         this.yamaha = new Yamaha01V96Controller(0);
         this.wss = null;
         this.server = null;
+        this.lastMeterBroadcast = 0; // Throttle meter broadcasts
     }
 
     init() {
@@ -35,6 +36,13 @@ class YamahaServer {
         this.yamaha.onStateChange = (state) => this.broadcast({ type: 'state', data: state });
         this.yamaha.onSyncStatus = (status) => this.broadcast({ type: 'syncStatus', status: status });
         this.yamaha.onMeterChange = (state) => {
+            const now = Date.now();
+            const broadcastRate = state.settings?.meterBroadcastRate || 150;
+
+            // Throttle broadcasts based on user setting
+            if (now - this.lastMeterBroadcast < broadcastRate) return;
+            this.lastMeterBroadcast = now;
+
             const meterData = {
                 channels: state.channels.map(ch => ch.meter),
                 master: state.master.meter
@@ -86,6 +94,7 @@ class YamahaServer {
                 'recallEQ': () => y.recallEQ(data.channel, data.preset),
                 'setSelectChannel': () => y.setSelectedChannel(data.channel),
                 'setMeterInterval': () => y.setMeterInterval(data.value, data.range),
+                'setMeterBroadcastRate': () => y.setMeterBroadcastRate(data.value),
                 'setPan': () => y.setPan(data.channel, data.value),
                 'scanPresets': () => y.scanPresets(),
                 'saveEQ': () => y.saveEQ(data.channel, data.preset, data.name),
