@@ -588,7 +588,7 @@ body.mode-dev-active #main-app-content {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(10, 10, 10, 0.45);
+    background: rgba(10, 10, 10, 0.2);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     z-index: 9999;
@@ -626,9 +626,9 @@ body.mode-dev-active #main-app-content {
 }
 
 .dev-close-btn {
-    background: #440000;
-    color: #ff6666;
-    border: 1px solid #660000;
+    background: transparent;
+    color: #888;
+    border: 1px solid #444;
     border-radius: 4px;
     width: 32px;
     height: 32px;
@@ -642,8 +642,9 @@ body.mode-dev-active #main-app-content {
 }
 
 .dev-close-btn:hover {
-    background: #660000;
+    background: rgba(255, 255, 255, 0.1);
     color: #fff;
+    border-color: #888;
 }
 
 .dev-grid {
