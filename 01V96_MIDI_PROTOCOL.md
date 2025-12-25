@@ -110,7 +110,8 @@ Factory presets (1-40) and User presets (41-127).
 | **034-035** | 0x21-22 | Radio, Telephone |
 | **036-037** | 0x23-24 | BGM, Karaoke |
 | **041** | **0x28** | **tiff sub** (User Preset) |
-| **044** | **0x2B** | **flashstore** (User Preset) |
+| **043** | **0x2A** | **flashstore** (User Preset) |
+| **045** | **0x2C** | **test** (User Preset) |
 
 ---
 

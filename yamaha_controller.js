@@ -1,5 +1,8 @@
 
 const midi = require('midi');
+const EQPresetManager = require('./lib/eqPresets');
+const BulkParser = require('./lib/bulkParser');
+const MIDIHelpers = require('./lib/midiHelpers');
 
 class Yamaha01V96Controller {
     constructor(portNumber = 0) {
@@ -10,6 +13,11 @@ class Yamaha01V96Controller {
         this.onStateChange = null;
         this.onRawMidi = null;
         this.meterConfig = { ms: 8000, start: 0, count: 32 };
+
+        // Initialize helper modules
+        this.eqPresets = new EQPresetManager(this.output);
+        this.bulkParser = new BulkParser();
+
 
         this.state = {
             selectedChannel: 1,
@@ -288,8 +296,59 @@ class Yamaha01V96Controller {
                 }
             }
 
-            // C: Bulk Dump Handling (Channel Names)
+            // D: EQ Store Detection (Preset Name in Message!)
+            // When mixer STORES a preset: F0 43 10 3E 7F 10 41 00 [ID] [NAME...] F7
+            // The name is directly in the message as ASCII!
+            if (message[0] === 0xF0 && message[1] === 0x43 &&
+                (message[2] & 0xF0) === 0x10 &&
+                message[3] === 0x3E && message[4] === 0x7F &&
+                message[5] === 0x10 && message[6] === 0x41 && message[7] === 0x00 &&
+                message.length >= 25) { // At least header + 16 chars name
+
+                const presetId = message[8];
+                let name = "";
+
+                // Read ASCII name from byte 9 onwards (up to 16 chars)
+                for (let i = 9; i < Math.min(25, message.length - 1); i++) {
+                    const c = message[i];
+                    if (c >= 32 && c < 127) name += String.fromCharCode(c);
+                    else if (c === 0x20) name += " "; // Space
+                }
+                name = name.trim();
+
+                console.log(`[STORE] Preset ${presetId + 1} stored as "${name}"`);
+
+                // Store in state
+                if (!this.state.eqPresets) this.state.eqPresets = {};
+                this.state.eqPresets[presetId + 1] = name;
+                this.emitEQPresets();
+            }
+
+            // E: EQ Recall Echo Detection (for auto-fetch attempts)
+            // When mixer loads a preset, it echoes: F0 43 1X 3E 7F 10 01 00 [ID] 00 00 F7
+            if (message[0] === 0xF0 && message[1] === 0x43 &&
+                (message[2] & 0xF0) === 0x10 && // Device 1X
+                message[3] === 0x3E && message[4] === 0x7F &&
+                message[5] === 0x10 && message[6] === 0x01 && message[7] === 0x00 &&
+                message.length === 12) {
+
+                const presetId = message[8];
+                console.log(`[RECALL ECHO] Detected preset recall: ID ${presetId}`);
+
+                // Request Parameter Dump for this specific preset to get its name
+                // F0 43 30 3E 7F 10 01 00 [ID] F7
+                setTimeout(() => {
+                    const dumpReq = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x10, 0x01, 0x00, presetId, 0xF7];
+                    console.log(`[AUTO-REQUEST] Fetching name for Preset ID ${presetId}...`);
+                    this.output.sendMessage(dumpReq);
+                }, 100); // Small delay to avoid MIDI buffer overload
+            }
+
+            // C: Bulk Dump Handling (Channel Names & EQ Lib)
+            // LM signature check (Generic)
             if (message[0] === 0xF0 && message[1] === 0x43 && message[7] === 0x4C && message[8] === 0x4D) { // LM signature
+                const typeHex = message[15].toString(16).toUpperCase();
+                console.log(`[BULK] LM SysEx detected! Type: 0x${typeHex} (Q=51, R=52)`);
                 this.handleBulkDump(message);
                 changed = true;
             }
@@ -320,7 +379,7 @@ class Yamaha01V96Controller {
         const type = msg[15];
 
         if (signature === "LM  8C93" && type === 0x52) { // 'R' block
-            console.log('📦 Bulk Dump Received: Analyzing Channel Names...');
+            console.log('Bulk Dump Received: Analyzing Channel Names...');
             const rawData = [];
             // Remove Bit-Bytes (every 8th byte in Yamaha LM format)
             // Header is 20 bytes (0..19), actual data starts at 20.
@@ -349,7 +408,34 @@ class Yamaha01V96Controller {
                     this.state.channels[ch].name = name.trim();
                 }
             }
-            console.log(`✅ Names updated from Mixer: ${this.state.channels.slice(0, 6).map(c => c.name).join(', ')}...`);
+            console.log(`Names updated from Mixer: ${this.state.channels.slice(0, 6).map(c => c.name).join(', ')}...`);
+        }
+
+        // Detect "LM  8C93 Q" block (EQ Library)
+        if (signature === "LM  8C93" && type === 0x51) {
+            console.log(`[BULK] + EQ Library block received (${msg.length} bytes)`);
+            this.processEQNames(msg);
+        } else {
+            console.log(`[BULK] Signature: "${signature}", Type: 0x${type.toString(16)} (not EQ)`);
+        }
+    }
+
+    processEQNames(msg) {
+        // Delegate to eqPresets module
+        const result = this.eqPresets.processEQNames(msg);
+        if (result) {
+            // Sync state from module to controller
+            this.state.eqPresets = this.eqPresets.getPresets();
+            this.emitEQPresets();
+        }
+    }
+
+    emitEQPresets() {
+        console.log('[EMIT] Sending eqPresets update to frontend...');
+        if (this.onStateChange) {
+            this.onStateChange({ eqPresets: this.state.eqPresets });
+        } else {
+            console.warn('[EMIT] No onStateChange callback registered!');
         }
     }
 
@@ -550,20 +636,28 @@ class Yamaha01V96Controller {
 
     recallEQ(channel, presetIdx) {
         if (!this.connected) return;
-        // 01V96 Library Recall SysEx: F0 43 1n 3E 12 [LibSlot] [Idx] F7
-        // EQ Library Slot = 0x02
-        const msg = [0xF0, 0x43, 0x10, 0x3E, 0x12, 0x02, presetIdx, 0xF7];
-        this.output.sendMessage(msg);
-        if (this.onRawMidi) this.onRawMidi(msg, true);
-        console.log(`📚 Recalling EQ Library Preset ${presetIdx} to current selection`);
+        // Delegate to eqPresets module
+        this.eqPresets.recallEQ(channel, presetIdx);
+    }
+
+    saveEQ(channel, presetIdx, name = '') {
+        if (!this.connected) return;
+        // Delegate to eqPresets module
+        this.eqPresets.saveEQ(channel, presetIdx, name);
     }
 
     async deepSync() {
         if (!this.connected) return;
-        console.log('🚀 Starting Full Deep Sync...');
+        console.log('Starting Full Deep Sync...');
+        if (this.onSyncStatus) this.onSyncStatus('start');
 
-        // Request Names (Bulk)
+        // Request Names (Bulk R)
         this.output.sendMessage([0xF0, 0x43, 0x20, 0x3E, 0x0E, 0x00, 0xF7]);
+        await new Promise(r => setTimeout(r, 200));
+
+        // Request EQ Library Names (Bulk Q)
+        console.log('Requesting EQ Library Bulk...');
+        this.output.sendMessage([0xF0, 0x43, 0x20, 0x3E, 0x0E, 0x02, 0xF7]);
         await new Promise(r => setTimeout(r, 200));
 
         const elements = [
@@ -586,11 +680,46 @@ class Yamaha01V96Controller {
             for (let i = 0; i < el.count; i++) {
                 const msg = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, el.id, el.p1, i, 0xF7];
                 this.output.sendMessage(msg);
-                await new Promise(r => setTimeout(r, 30)); // 30ms is usually fine
+                await new Promise(r => setTimeout(r, 50)); // Increased to 50ms for reliability
             }
         }
 
-        console.log("✅ Deep Sync Complete");
+        console.log("Deep Sync Complete");
+        if (this.onSyncStatus) this.onSyncStatus('end');
+    }
+
+    async scanPresets() {
+        if (!this.connected) return;
+        console.log('========================================');
+        console.log('[SCAN] Starting Preset Scan (1-128)...');
+        console.log('[SCAN] Loading presets on Channel 32');
+        console.log('========================================');
+
+        const SCAN_CHANNEL = 32;
+        let foundCount = 0;
+
+        for (let presetId = 1; presetId <= 128; presetId++) {
+            const before = Object.keys(this.state.eqPresets || {}).length;
+
+            // Load preset on channel 32
+            const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x10, 0x01, 0x00, presetId & 0x7F, 0x00, 0x00, 0xF7];
+            this.output.sendMessage(msg);
+
+            // Wait for mixer response
+            await new Promise(r => setTimeout(r, 200));
+
+            const after = Object.keys(this.state.eqPresets || {}).length;
+            if (after > before) {
+                foundCount++;
+                console.log(`[SCAN] ${presetId}/128 - FOUND: "${this.state.eqPresets[presetId]}" (Total: ${foundCount})`);
+            } else if (presetId % 10 === 0) {
+                console.log(`[SCAN] Progress: ${presetId}/128 (Found: ${foundCount})`);
+            }
+        }
+
+        console.log('========================================');
+        console.log(`[SCAN] Complete! Found ${foundCount} named presets.`);
+        console.log('========================================');
     }
 
     disconnect() {

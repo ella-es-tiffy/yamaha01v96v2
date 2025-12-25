@@ -10,6 +10,10 @@ yamaha.onStateChange = (state) => {
     broadcast({ type: 'state', data: state });
 };
 
+yamaha.onSyncStatus = (status) => {
+    broadcast({ type: 'syncStatus', status: status });
+};
+
 yamaha.onMeterChange = (state) => {
     // Only broadcast meter values, not full state
     const meterData = {
@@ -30,6 +34,7 @@ if (yamaha.connect()) {
 const wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
 
 wss.on('connection', (ws) => {
+    console.log('[WS] Client connected, sending initial state. Ch1 eqOn:', yamaha.state.channels[0].eqOn);
     ws.send(JSON.stringify({ type: 'state', data: yamaha.state }));
     ws.on('message', (message) => {
         try {
@@ -49,6 +54,8 @@ wss.on('connection', (ws) => {
             else if (data.type === 'setSelectChannel') yamaha.setSelectedChannel(data.channel);
             else if (data.type === 'setMeterInterval') yamaha.setMeterInterval(data.value, data.range);
             else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
+            else if (data.type === 'scanPresets') yamaha.scanPresets();
+            else if (data.type === 'saveEQ') yamaha.saveEQ(data.channel, data.preset);
             else if (data.type === 'getChangelog') {
                 fs.readFile(path.join(__dirname, 'changelog.md'), 'utf8', (err, log) => {
                     if (err) ws.send(JSON.stringify({ type: 'changelog', data: 'Changelog not found.' }));

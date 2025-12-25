@@ -4,3 +4,4 @@ agents.md
 .DS_Store
 .env
 !agents.md
+.venv/

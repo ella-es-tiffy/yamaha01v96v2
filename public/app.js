@@ -15,10 +15,11 @@ class YamahaTouchRemote {
         this.debugUI = false; // Toggle for hex values/addresses
         this.meterOffset = 0; // Noise gate for meters
         this.meterBankOnly = false; // ECO Mode: Only visible 8 ch
+        this.autoCloseSafety = true; // Auto-close EQ lock cover
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
-                fader: 0, mute: false, pan: 64, fxOn: false, name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`, eq: {
+                fader: 0, mute: false, pan: 64, eqOn: false, fxOn: false, name: (i < 32) ? `CH${i + 1}` : `ST${i - 31}`, eq: {
                     low: { q: 64, freq: 64, gain: 64 },
                     lmid: { q: 64, freq: 64, gain: 64 },
                     hmid: { q: 64, freq: 64, gain: 64 },
@@ -38,6 +39,12 @@ class YamahaTouchRemote {
         this.renderEQ();
         this.connect();
         this.setupHandlers();
+
+        // Delayed sync to ensure DOM is ready and initial state is received
+        setTimeout(() => {
+            console.log('[INIT] Delayed syncFaders for EQ buttons');
+            this.syncFaders();
+        }, 1000);
 
         document.addEventListener('touchstart', (e) => {
             if (e.touches.length > 1 && e.target.closest('.mixer-viewport')) e.preventDefault();
@@ -186,6 +193,7 @@ class YamahaTouchRemote {
                     <button class="lib-btn" id="btn-lib-prev" style="flex:1; font-size: 0.6rem; padding: 2px; background: #222; border: 1px solid #333; color: #777; border-radius: 2px; cursor: pointer;">◀</button>
                     <button class="lib-btn" id="btn-lib-next" style="flex:1; font-size: 0.6rem; padding: 2px; background: #222; border: 1px solid #333; color: #777; border-radius: 2px; cursor: pointer;">▶</button>
                 </div>
+                <button id="btn-lib-save" style="width: 100%; margin-top: 4px; font-size: 0.5rem; padding: 4px; background: #004400; border: 1px solid #006600; color: #8f8; border-radius: 2px; cursor: pointer; font-weight: bold;">SAVE</button>
             </div>
             <div></div>
         `;
@@ -225,7 +233,7 @@ class YamahaTouchRemote {
             });
 
             globalRow.addEventListener('mouseleave', () => {
-                if (cover.classList.contains('open')) {
+                if (this.autoCloseSafety && cover.classList.contains('open')) {
                     cover.classList.remove('open');
                     closeTab.style.top = '-25px';
                     setTimeout(() => closeTab.style.display = 'none', 300);
@@ -235,24 +243,20 @@ class YamahaTouchRemote {
 
         // --- PRESET HANDLERS ---
         const presetLabel = innerGrid.querySelector('#val-eq-preset');
-        let currentPresetIdx = 40; // Displays 041 (tiff sub)
-        const presets = [
-            { id: "001", name: "Bass Drum 1" },
-            { id: "025", name: "Male Vocal 1" },
-            { id: "041", name: "tiff sub" }
-        ];
+        this.currentPresetIdx = 0; // Track current preset (0-indexed)
 
-        const updatePresetDisplay = () => {
-            const p = presets.find(p => parseInt(p.id) === currentPresetIdx + 1) || { id: (currentPresetIdx + 1).toString().padStart(3, '0'), name: '-- EMPTY --' };
+        this.updatePresetDisplay = () => {
+            const uiNumber = this.currentPresetIdx + 1;
+            const name = (this.state.eqPresets && this.state.eqPresets[uiNumber]) || '-- EMPTY --';
             if (presetLabel) {
                 presetLabel.innerHTML = `
-                    <span style="font-size: 0.4rem; color: #666; margin-right: 5px;">${p.id}</span>
-                    <span style="font-size: 0.6rem;">${p.name.toUpperCase()}</span>
+                    <span style="font-size: 0.5rem; color: var(--accent); margin-right: 5px; font-weight: bold;">${uiNumber.toString().padStart(3, '0')}</span>
+                    <span style="font-size: 0.6rem;">${name.toUpperCase()}</span>
                 `;
             }
         };
 
-        updatePresetDisplay();
+        this.updatePresetDisplay();
 
         presetLabel?.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -261,16 +265,27 @@ class YamahaTouchRemote {
 
         innerGrid.querySelector('#btn-lib-prev')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            currentPresetIdx = Math.max(0, currentPresetIdx - 1);
-            updatePresetDisplay();
-            this.send('recallEQ', { channel: this.selectedChannel, preset: currentPresetIdx + 1 });
+            if (this.currentPresetIdx > 0) {
+                this.currentPresetIdx--;
+                this.updatePresetDisplay();
+                this.send('recallEQ', { channel: this.selectedChannel, preset: this.currentPresetIdx + 1 });
+            }
         });
 
         innerGrid.querySelector('#btn-lib-next')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            currentPresetIdx = Math.min(127, currentPresetIdx + 1);
-            updatePresetDisplay();
-            this.send('recallEQ', { channel: this.selectedChannel, preset: currentPresetIdx + 1 });
+            if (this.currentPresetIdx < 127) {
+                this.currentPresetIdx++;
+                this.updatePresetDisplay();
+                this.send('recallEQ', { channel: this.selectedChannel, preset: this.currentPresetIdx + 1 });
+            }
+        });
+
+        innerGrid.querySelector('#btn-lib-save')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const presetId = this.currentPresetIdx + 1;
+            console.log(`[UI] Saving current EQ to Preset ${presetId}...`);
+            this.send('saveEQ', { channel: this.selectedChannel, preset: presetId });
         });
 
         globalRow.appendChild(innerGrid);
@@ -450,27 +465,9 @@ class YamahaTouchRemote {
 
         document.getElementById('sync-btn').addEventListener('click', (e) => {
             const btn = e.target;
-            if (btn.classList.contains('cooldown')) return;
-
+            if (btn.classList.contains('syncing') || btn.disabled) return;
             this.send('sync', {});
-
-            // Start Cooldown
-            btn.classList.add('cooldown');
-            const originalText = btn.innerText;
-            let seconds = 10;
-
-            const timer = setInterval(() => {
-                seconds--;
-                if (seconds <= 0) {
-                    clearInterval(timer);
-                    btn.classList.remove('cooldown');
-                    btn.innerText = originalText;
-                } else {
-                    btn.innerText = `SYNC (${seconds}s)`;
-                }
-            }, 1000);
-
-            btn.innerText = `SYNC (10s)`;
+            // Visual feedback starts immediately but actual state is driven by WebSocket 'syncStatus'
         });
 
 
@@ -522,6 +519,10 @@ class YamahaTouchRemote {
             this.triggerMeterSync();
         });
 
+        document.getElementById('chk-auto-close-safety')?.addEventListener('change', (e) => {
+            this.autoCloseSafety = e.target.checked;
+        });
+
         document.getElementById('copy-debug')?.addEventListener('click', () => {
             const logEl = document.getElementById('debug-log');
             const entries = Array.from(logEl.querySelectorAll('div:not(:first-child)'))
@@ -543,6 +544,11 @@ class YamahaTouchRemote {
                 setTimeout(() => btn.innerText = oldText, 2000);
             } catch (err) { }
             document.body.removeChild(textArea);
+        });
+
+        document.getElementById('scan-presets-btn')?.addEventListener('click', () => {
+            console.log('[UI] Starting preset scan...');
+            this.send('scanPresets', {});
         });
 
         // Encoder Delegation
@@ -647,58 +653,41 @@ class YamahaTouchRemote {
         const overlay = document.getElementById('preset-browser-overlay');
         const list = document.getElementById('preset-list');
         const closeBtn = document.getElementById('close-preset-modal');
-        if (!overlay || !list) return;
+        const previewId = document.getElementById('preview-preset-id');
+        const previewName = document.getElementById('preview-preset-name');
+        const recallBtn = document.getElementById('btn-recall-selection');
 
-        const presets = [
-            { id: 1, name: "Bass Drum 1" },
-            { id: 2, name: "Bass Drum 2" },
-            { id: 3, name: "Snare Drum 1" },
-            { id: 4, name: "Snare Drum 2" },
-            { id: 5, name: "Tom-tom 1" },
-            { id: 6, name: "Tom-tom 2" },
-            { id: 7, name: "Tom-tom 3" },
-            { id: 8, name: "Hi-hat" },
-            { id: 9, name: "Cymbals" },
-            { id: 10, name: "Percussion" },
-            { id: 11, name: "All Around" },
-            { id: 12, name: "Guit.ELEC. 1" },
-            { id: 13, name: "Guit.ELEC. 2" },
-            { id: 14, name: "Guit.ACOUS." },
-            { id: 15, name: "Bass ELEC. 1" },
-            { id: 16, name: "Bass ELEC. 2" },
-            { id: 17, name: "Bass SYNTH 1" },
-            { id: 18, name: "Bass SYNTH 2" },
-            { id: 19, name: "Piano 1" },
-            { id: 20, name: "Piano 2" },
-            { id: 21, name: "Organ" },
-            { id: 22, name: "Strings 1" },
-            { id: 23, name: "Strings 2" },
-            { id: 24, name: "Brass" },
-            { id: 25, name: "Male Vocal 1" },
-            { id: 26, name: "Male Vocal 2" },
-            { id: 27, name: "Female Vo. 1" },
-            { id: 28, name: "Female Vo. 2" },
-            { id: 29, name: "Chorus 1" },
-            { id: 30, name: "Chorus 2" },
-            { id: 31, name: "Chorus 3" },
-            { id: 32, name: "Speech 1" },
-            { id: 33, name: "Speech 2" },
-            { id: 34, name: "Radio" },
-            { id: 35, name: "Telephone" },
-            { id: 36, name: "BGM" },
-            { id: 37, name: "Karaoke" },
-            { id: 38, name: "All Around" },
-            { id: 39, name: "All Around" },
-            { id: 40, name: "All Around" },
-            { id: 41, name: "tiff sub" },
-            { id: 44, name: "flashstore" }
-        ];
+        let selectedPresetId = null;
+
+        // Initialize as empty list, only filling from received bulk data
+        const allPresets = [];
+        const MAX_SLOTS = 127;
+
+        for (let i = 1; i <= MAX_SLOTS; i++) {
+            if (this.state.eqPresets && this.state.eqPresets[i]) {
+                allPresets.push({ id: i, name: this.state.eqPresets[i] });
+            }
+        }
 
         if (closeBtn) closeBtn.onclick = () => overlay.classList.remove('active');
 
+        // Reset Selection state
+        if (previewId) previewId.innerText = '000';
+        if (previewName) previewName.innerText = '-- SELECT PRESET --';
+        if (recallBtn) {
+            recallBtn.disabled = true;
+            recallBtn.onclick = () => {
+                if (selectedPresetId !== null) {
+                    this.send('recallEQ', { channel: this.selectedChannel, preset: selectedPresetId });
+                    overlay.classList.remove('active');
+                }
+            };
+        }
+
         list.innerHTML = '';
-        for (let i = 1; i <= 127; i++) {
-            const known = presets.find(p => p.id === i);
+        // Render slots
+        for (let i = 1; i <= MAX_SLOTS; i++) {
+            const known = allPresets.find(p => p.id === i);
             const item = document.createElement('div');
             item.className = `preset-item ${known ? 'filled' : ''}`;
             item.innerHTML = `
@@ -706,8 +695,20 @@ class YamahaTouchRemote {
                 <span class="name">${known ? known.name.toUpperCase() : '-- EMPTY --'}</span>
             `;
             item.addEventListener('click', () => {
-                this.send('recallEQ', { channel: this.selectedChannel, preset: i });
-                overlay.classList.remove('active');
+                // DESELECT ALL
+                list.querySelectorAll('.preset-item').forEach(el => el.classList.remove('selected'));
+                // SELECT THIS
+                item.classList.add('selected');
+                selectedPresetId = i;
+
+                // UPDATE PREVIEW
+                if (previewId) previewId.innerText = i.toString().padStart(3, '0');
+                if (previewName) previewName.innerText = known ? known.name.toUpperCase() : '-- EMPTY --';
+
+                // ENABLE BUTTON
+                if (recallBtn) {
+                    recallBtn.disabled = false;
+                }
             });
             list.appendChild(item);
         }
@@ -937,6 +938,8 @@ class YamahaTouchRemote {
         this.socket.onopen = () => {
             document.getElementById('status').innerText = 'Verbunden';
             document.getElementById('status').style.color = '#34c759';
+            // Trigger initial UI sync after connection
+            setTimeout(() => this.syncFaders(), 500);
         };
         this.socket.onclose = () => {
             document.getElementById('status').innerText = 'Verbindung unterbrochen';
@@ -975,6 +978,15 @@ class YamahaTouchRemote {
                 // Merge state selectively to preserve local fader values during drag
                 const newState = data.data;
 
+                // Handle Dynamic EQ Presets Update
+                if (newState.eqPresets) {
+                    this.state.eqPresets = newState.eqPresets;
+                    const Overlay = document.getElementById('preset-browser-overlay');
+                    if (Overlay?.classList.contains('active')) {
+                        this.openPresetBrowser(); // Re-render list live
+                    }
+                }
+
                 // Update channels, but preserve fader value if actively dragging
                 for (let i = 0; i < 36; i++) {
                     if (!this.state.channels[i]) continue;
@@ -1008,7 +1020,6 @@ class YamahaTouchRemote {
                 this.syncStoredGains(); // Ensure backup gains are populated from new state
             } else if (data.type === 'eq') {
                 // Handle individual EQ parameter updates
-                // format: { channel: 1, band: 'low', param: 'q', value: 0 }
                 const d = data.data;
                 const chIdx = parseInt(d.channel) - 1;
                 if (this.state.channels[chIdx] && this.state.channels[chIdx].eq[d.band]) {
@@ -1023,16 +1034,32 @@ class YamahaTouchRemote {
                 }
             } else if (data.type === 'meters') {
                 // Update only meters, don't touch faders
-                for (let i = 0; i < 32; i++) {
+                for (let i = 0; i < 36; i++) {
                     if (this.state.channels[i]) {
                         this.state.channels[i].meter = data.data.channels[i] || 0;
                     }
                 }
                 this.state.master.meter = data.data.master || 0;
                 // Update meter UI only
-                const end = Math.min(32, this.currentBankStart + 7);
-                for (let i = this.currentBankStart; i <= end; i++) {
-                    this.updateMeterUI(i, this.state.channels[i - 1].meter);
+                this.updateMeterUIWithState();
+            } else if (data.type === 'syncStatus') {
+                const btn = document.getElementById('sync-btn');
+                if (btn) {
+                    if (data.status === 'start') {
+                        btn.disabled = true;
+                        btn.classList.add('syncing');
+                        btn.innerText = 'SYNCING...';
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'wait';
+                        btn.style.background = '#444';
+                    } else if (data.status === 'end') {
+                        btn.disabled = false;
+                        btn.classList.remove('syncing');
+                        btn.innerText = 'SYNC';
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                        btn.style.background = '';
+                    }
                 }
             } else if (data.type === 'changelog') {
                 const body = document.getElementById('changelog-body');
@@ -1056,6 +1083,43 @@ class YamahaTouchRemote {
         logEl.scrollTop = logEl.scrollHeight;
     }
 
+    updateMeterUIWithState() {
+        // Update meters for visible bank
+        const end = Math.min(36, this.currentBankStart + 7);
+        for (let i = this.currentBankStart; i <= end; i++) {
+            if (this.state.channels[i - 1]) {
+                this.updateMeterUI(i, this.state.channels[i - 1].meter);
+            }
+        }
+        // Master Meter
+        this.updateMeterUIWithVal('master', this.state.master.meter);
+    }
+
+    // Helper to update meter by channel ID
+    updateMeterUI(i, val) {
+        this.updateMeterUIWithVal(i, val);
+    }
+
+    updateMeterUIWithVal(id, val) {
+        // Apply noise gate / offset
+        if (val < this.meterOffset) val = 0;
+
+        const el = document.getElementById(`meter-${id}`);
+        if (el) {
+            const pct = Math.min(100, (val / 32) * 100); // 32 is roughly max meter value in standard mode? Or 0-255?
+            // Meter values from Yamaha are usually 0x00-0x20 (32) or potentially higher depending on metering point.
+            // Assuming 0-32 based on previous mapping, or let's double check. 
+            // Standard meters 01V96: 32 segments. So val is 0..32.
+
+            el.style.height = `${pct}%`;
+
+            // Color
+            if (pct > 90) el.style.background = '#ff3b30'; // Clip
+            else if (pct > 70) el.style.background = '#ffcc00'; // Warning
+            else el.style.background = '#34c759'; // Normal
+        }
+    }
+
     syncFaders() {
         const end = Math.min(36, this.currentBankStart + 7);
         for (let i = this.currentBankStart; i <= end; i++) {
@@ -1071,6 +1135,13 @@ class YamahaTouchRemote {
             this.updateMuteUI(i, ch.mute);
             this.updateMeterUI(i, ch.meter);
             this.updateNameUI(i, ch.name);
+
+            // Update EQ button state
+            const eqBtn = document.getElementById(`eq-btn-${i}`);
+            if (eqBtn) {
+                console.log(`[EQ-BTN] Ch${i} eqOn=${ch.eqOn}`);
+                eqBtn.classList.toggle('active', ch.eqOn);
+            }
         }
         if (this.activeFader !== 'master') {
             this.updateFaderUI('master', this.state.master.fader);
