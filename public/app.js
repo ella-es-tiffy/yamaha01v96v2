@@ -760,13 +760,17 @@ class YamahaTouchRemote {
         const renderList = (filter = '') => {
             list.innerHTML = '';
             const query = filter.toLowerCase().trim();
+            const presets = this.state.eqPresets || {};
+            let matchCount = 0;
 
             for (let i = 1; i <= MAX_SLOTS; i++) {
-                const name = (this.state.eqPresets && this.state.eqPresets[i]) || '';
+                const name = presets[i] || '';
                 const idStr = i.toString().padStart(3, '0');
 
                 // Smart Filter
                 if (query && !name.toLowerCase().includes(query) && !idStr.includes(query)) continue;
+
+                matchCount++;
 
                 const item = document.createElement('div');
                 item.className = `preset-item ${name ? 'filled' : ''}`;
@@ -817,6 +821,10 @@ class YamahaTouchRemote {
                 }
 
                 list.appendChild(item);
+            }
+
+            if (matchCount === 0) {
+                list.innerHTML = `<div style="padding: 40px; text-align: center; color: #666; font-size: 0.8rem;">KEINE PRESETS GEFUNDEN ${query ? `FÜR "${query.toUpperCase()}"` : ''}</div>`;
             }
         };
 
