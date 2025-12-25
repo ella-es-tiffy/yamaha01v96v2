@@ -156,8 +156,10 @@ header.view-header {
     width: 30px;
     height: 61px;
     background: #1a1a1a;
-    border: 1px solid #333;
-    color: #666;
+    border: 1px solid #00d2ff;
+    /* Cyan border in OFF state */
+    color: #00d2ff;
+    /* Cyan text in OFF state */
     font-size: 0.6rem;
     font-weight: 900;
     line-height: 1.3;
@@ -172,8 +174,9 @@ header.view-header {
 }
 
 .peak-btn-vertical.active {
-    background: rgba(0, 210, 255, 0.2);
-    color: #00d2ff;
+    background: rgba(0, 210, 255, 0.3);
+    /* Stronger fill when active */
+    color: #fff;
     border-color: #00d2ff;
     box-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
 }
