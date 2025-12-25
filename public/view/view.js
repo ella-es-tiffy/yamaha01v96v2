@@ -20,47 +20,6 @@ class ProView {
         this.init();
     }
 
-    // ... (rest omitted)
-
-    updateMeters(channels) {
-        const offset = this.settings.meterOffset || 0;
-
-        for (let i = 1; i <= this.meterCount; i++) {
-            let val = channels[i - 1] || 0;
-            const gateThreshold = (offset / 100) * 32;
-            if (val < gateThreshold) val = 0;
-
-            const elId = `meter-${i}`;
-            const dbId = `db-${i}`;
-
-            if (!this.elCache[elId]) this.elCache[elId] = document.getElementById(elId);
-            if (!this.elCache[dbId]) this.elCache[dbId] = document.getElementById(dbId);
-
-            const el = this.elCache[elId];
-            const dbEl = this.elCache[dbId];
-
-            if (el) {
-                const pct = this.getMeterPct(val);
-                el.style.height = `${pct}%`;
-
-                // Update dB Box
-                if (dbEl) {
-                    if (val > 4) {
-                        const dbStr = this.valToDB(val);
-                        if (dbEl.innerText !== dbStr) {
-                            dbEl.innerText = dbStr;
-                            dbEl.style.color = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
-                        }
-                    } else {
-                        if (dbEl.innerText !== '') dbEl.innerText = '';
-                    }
-                }
-
-                // Clear old innerText just in case
-                el.innerText = '';
-            }
-        }
-    }
 
     init() {
         this.renderMeterBridge();
@@ -265,7 +224,7 @@ class ProView {
 
                 // Update dB Box
                 if (dbEl) {
-                    if (val > 4) {
+                    if (val > 1) {
                         const dbStr = this.valToDB(val);
                         if (dbEl.innerText !== dbStr) {
                             dbEl.innerText = dbStr;
@@ -295,7 +254,8 @@ class ProView {
     valToDB(val) {
         if (val >= 31) return 'CLIP';
         if (val >= 29) return Math.round((val - 29) * 5 - 5);
-        return Math.round((val - 29) * 3 - 5);
+        // Low range interpolation (1 -> -60dB, 29 -> -5dB)
+        return Math.round(-60 + (val - 1) * 2);
     }
 
     updateStatusIndicators(data) {
