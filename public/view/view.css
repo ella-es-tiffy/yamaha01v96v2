@@ -173,12 +173,6 @@ header.view-header {
     /* Prevent delays */
 }
 
-.peak-btn-vertical:active,
-.peak-btn-vertical:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-}
-
 .peak-btn-vertical.active {
     background: rgba(0, 210, 255, 0.2);
     color: #00d2ff;

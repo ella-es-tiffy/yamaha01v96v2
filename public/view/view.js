@@ -19,6 +19,7 @@ class ProView {
         this.peakHoldEnabled = false; // Peak Hold feature
         this.peakValues = new Array(33).fill(0); // Peak per channel (1-32)
         this.peakTimers = new Array(33).fill(null); // Timeout handles
+        this.peakRenderCache = new Array(33).fill(null); // Last rendered peak
 
         this.init();
     }
@@ -169,6 +170,7 @@ class ProView {
                 this.peakValues.fill(0);
                 this.peakTimers.forEach(t => t && clearTimeout(t));
                 this.peakTimers.fill(null);
+                this.peakRenderCache.fill(null);
             }
         }
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -309,23 +311,29 @@ class ProView {
                         }, 2000);
                     }
 
-                    // Render peak dot
+                    // Render peak dot - ONLY if value changed
                     if (peakEl && this.peakValues[i] > 0) {
-                        const peakPct = this.getMeterPct(this.peakValues[i]);
-                        peakEl.style.bottom = `${peakPct}%`;
-                        peakEl.style.display = 'block';
-
-                        // Color based on peak level
                         const peakVal = this.peakValues[i];
-                        let peakColor;
-                        if (peakVal >= 32) {
-                            peakColor = '#ff3b30'; // Red (>= +6dB)
-                        } else if (peakVal >= 31) {
-                            peakColor = '#ffcc00'; // Orange (+3dB to +6dB)
-                        } else {
-                            peakColor = '#34c759'; // Green (< +3dB)
+
+                        // Only update DOM if peak changed
+                        if (this.peakRenderCache[i] !== peakVal) {
+                            const peakPct = this.getMeterPct(peakVal);
+                            peakEl.style.bottom = `${peakPct}%`;
+                            peakEl.style.display = 'block';
+
+                            // Color based on peak level
+                            let peakColor;
+                            if (peakVal >= 32) {
+                                peakColor = '#ff3b30'; // Red (>= +6dB)
+                            } else if (peakVal >= 31) {
+                                peakColor = '#ffcc00'; // Orange (+3dB to +6dB)
+                            } else {
+                                peakColor = '#34c759'; // Green (< +3dB)
+                            }
+                            peakEl.style.background = peakColor;
+
+                            this.peakRenderCache[i] = peakVal;
                         }
-                        peakEl.style.background = peakColor;
                     }
                 } else {
                     // Hide peak when disabled
