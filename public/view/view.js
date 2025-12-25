@@ -150,16 +150,25 @@ class ProView {
         const scaleStrip = document.createElement('div');
         scaleStrip.className = 'meter-scale-strip';
         scaleStrip.innerHTML = `
-            <div class="scale-val" style="top: 0%">10</div>
-            <div class="scale-val" style="top: 15%">5</div>
-            <div class="scale-val" style="top: 25%">0</div>
-            <div class="scale-val" style="top: 35%">5</div>
-            <div class="scale-val" style="top: 45%">10</div>
-            <div class="scale-val" style="top: 55%">15</div>
-            <div class="scale-val" style="top: 65%">20</div>
-            <div class="scale-val" style="top: 80%">30</div>
-            <div class="scale-val" style="top: 90%">40</div>
-            <div class="scale-val" style="top: 96%">50</div>
+            <div class="meter-wrapper" style="position:relative; border:none; background:transparent; padding:0;">
+                <div class="scale-val" style="top: 0%">10</div>
+                <div class="scale-val" style="top: 15%">5</div>
+                <div class="scale-val" style="top: 25%">0</div>
+                <div class="scale-val" style="top: 35%">5</div>
+                <div class="scale-val" style="top: 45%">10</div>
+                <div class="scale-val" style="top: 55%">15</div>
+                <div class="scale-val" style="top: 65%">20</div>
+                <div class="scale-val" style="top: 80%">30</div>
+                <div class="scale-val" style="top: 90%">40</div>
+                <div class="scale-val" style="top: 96%">50</div>
+            </div>
+            <div class="db-val-box" style="visibility:hidden">.</div>
+            <div class="status-stack" style="visibility:hidden; background:transparent">
+                 <div class="st-ind" style="opacity:0"></div><div class="st-ind" style="opacity:0"></div>
+                 <div class="st-ind" style="opacity:0"></div><div class="st-ind" style="opacity:0"></div>
+                 <div class="st-ind" style="opacity:0"></div>
+            </div>
+            <div class="strip-label" style="visibility:hidden">.</div>
         `;
         bridge.appendChild(scaleStrip);
 

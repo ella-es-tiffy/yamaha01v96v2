@@ -196,8 +196,7 @@ header.view-header {
 }
 
 .module-frame.short {
-    height: 35vh;
-    /* 1/3 Screen Height approx */
+    height: calc(35vh + 65px);
     min-height: 250px;
 }
 
