@@ -24,6 +24,7 @@ This document tracks planned features and improvements for future releases.
 *   [ ] **External MIDI Unit Support:** Ability to bridge physical fader units (via the server) to control the 01V96.
 *   [ ] **Multi-Instance Sync:** Optimized state broadcasting for massive multi-screen setups (the "Midas Giant Console" workflow).
 *   [ ] **Dark Mode Refinement:** Even more rich aesthetics and premium animations.
+*   [x] **Legacy Device Support:** Maintain compatibility with iOS 12 / Safari 12 (No optional chaining, no flex-gap).
 
 ---
 *Generated for v1.1stable by Antigravity AI*

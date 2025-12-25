@@ -202,10 +202,8 @@ header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px 0;
-    /* TIGHTER PADDING */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    /* Removed transition for performance */
 }
 
 .ch-num {
@@ -228,9 +226,8 @@ header {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    margin-bottom: 2px;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
-    transition: all 0.1s ease;
+    /* Removed transition */
 }
 
 .fx-button:active {
@@ -295,7 +292,7 @@ header {
     cursor: pointer;
     margin-bottom: 2px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    transition: all 0.15s ease;
+    /* Removed transition */
 }
 
 .eq-button:active {
@@ -392,18 +389,24 @@ header {
 
 .meter-fill {
     width: 100%;
-    height: 0%;
+    height: 100%;
     background: #0f0;
     position: absolute;
     bottom: 0;
     left: 0;
-    transition: height 0.08s linear;
+    transform: scaleY(0);
+    -webkit-transform: scaleY(0);
+    transform-origin: bottom;
+    -webkit-transform-origin: bottom;
+    will-change: transform;
 }
 
 .fader-thumb {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
+    /* We handle transform in JS for performance now */
+    transform: translate3d(-50%, 0, 0);
+    -webkit-transform: translate3d(-50%, 0, 0);
     width: 42px;
     height: 64px;
     background: linear-gradient(180deg, #666 0%, #222 100%);
@@ -412,9 +415,9 @@ header {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.8);
     display: flex;
     justify-content: center;
-    top: 50%;
+    top: 0;
     z-index: 10;
-    /* Default */
+    will-change: transform;
 }
 
 .fader-thumb::after {

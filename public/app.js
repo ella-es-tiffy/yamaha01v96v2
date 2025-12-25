@@ -14,9 +14,13 @@ class YamahaTouchRemote {
         this.storedGains = {}; // Storage for gain values before HPF/LPF snapping
         this.debugUI = false; // Toggle for hex values/addresses
         this.meterOffset = 0; // Noise gate for meters
-        this.meterBankOnly = false; // ECO Mode: Only visible 8 ch
-        this.autoCloseSafety = false; // Auto-close EQ lock cover
         this.currentPresetIdx = 0; // Track current preset (0-indexed)
+        this.pendingFaderSends = {}; // Throttling for MIDI outgoing
+        this.lastFaderSendTime = 0;
+        this.faderRafId = null;
+        this.faderUpdateQueue = new Set();
+        this.knobUpdateQueue = new Set();
+        this.elCache = {}; // Cache for DOM elements to avoid lookups
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
@@ -51,6 +55,35 @@ class YamahaTouchRemote {
             if (e.touches.length > 1 && e.target.closest('.mixer-viewport')) e.preventDefault();
         }, { passive: false });
         document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+
+        this.startFaderRaf();
+    }
+
+    startFaderRaf() {
+        const loop = () => {
+            if (this.faderUpdateQueue.size > 0 || this.knobUpdateQueue.size > 0) {
+                this.faderUpdateQueue.forEach(chId => {
+                    const val = (chId === 'master') ? this.state.master.fader : this.state.channels[parseInt(chId) - 1].fader;
+                    this.updateFaderUIReal(chId, val);
+                });
+                this.faderUpdateQueue.clear();
+
+                this.knobUpdateQueue.forEach(knobId => {
+                    let val;
+                    if (knobId.startsWith('pan-')) {
+                        const ch = parseInt(knobId.replace('pan-', ''));
+                        val = this.state.channels[ch - 1].pan;
+                    } else {
+                        // EQ Knob
+                        val = this.getKnobMIDIViaState(knobId);
+                    }
+                    if (val !== undefined) this.updateKnobUIReal(knobId, val);
+                });
+                this.knobUpdateQueue.clear();
+            }
+            this.faderRafId = requestAnimationFrame(loop);
+        };
+        this.faderRafId = requestAnimationFrame(loop);
     }
 
     // ===== CUSTOM MODAL HELPER FUNCTIONS v1.0 =====
@@ -440,19 +473,27 @@ class YamahaTouchRemote {
             const rect = targetArea.getBoundingClientRect();
             const constrainedY = Math.max(0, Math.min(rect.height, coords.y - rect.top));
             const value = Math.round((1 - (constrainedY / rect.height)) * 1023);
-            this.updateFaderUI(chId, value);
 
-            // Update local state to prevent snap-back
+            // Update local state and queue for rAF UI update
             if (chId === 'master') {
+                if (this.state.master.fader === value) return;
                 this.state.master.fader = value;
             } else {
                 const chIdx = parseInt(chId) - 1;
-                if (this.state.channels[chIdx]) {
-                    this.state.channels[chIdx].fader = value;
-                }
+                if (!this.state.channels[chIdx] || this.state.channels[chIdx].fader === value) return;
+                this.state.channels[chIdx].fader = value;
             }
 
-            this.send('setFader', { channel: chId, value });
+            this.faderUpdateQueue.add(chId);
+
+            // Throttled MIDI Send
+            const now = Date.now();
+            this.pendingFaderSends[chId] = value;
+
+            if (now - this.lastFaderSendTime > 32) { // 32ms throttle (~30fps) for MIDI
+                this.flushFaderSends();
+                this.lastFaderSendTime = now;
+            }
         };
 
         // Channel Selection (SEL buttons)
@@ -934,17 +975,32 @@ class YamahaTouchRemote {
         });
     }
 
-    updateKnobUI(knobEl, midiVal) {
+    updateKnobUI(knobElOrId, midiVal) {
+        const id = (typeof knobElOrId === 'string') ? knobElOrId : knobElOrId.id;
+        // Ensure dataset is updated so rAF can read latest val (fallback)
+        if (typeof knobElOrId !== 'string') knobElOrId.dataset.midi = midiVal;
+        this.knobUpdateQueue.add(id);
+    }
+
+    updateKnobUIReal(id, midiVal) {
+        if (!this.elCache[id]) {
+            this.elCache[id] = document.getElementById(id);
+            if (this.elCache[id]) {
+                this.elCache[`ring-${id}`] = document.getElementById(`ring-${id}`);
+                this.elCache[`ind-${id}`] = this.elCache[id].querySelector('.knob-indicator');
+                this.elCache[`val-${id}`] = document.getElementById(`val-${id}`);
+            }
+        }
+        const knobEl = this.elCache[id];
         if (!knobEl) return;
 
-        let val = (midiVal === undefined || isNaN(midiVal)) ? 64 : midiVal;
+        let val = (midiVal === undefined || isNaN(midiVal)) ? (parseInt(knobEl.dataset.midi) || 64) : midiVal;
         const hex = val.toString(16).toUpperCase().padStart(2, '0');
-        const parts = knobEl.id.split('-');
-        const isEQ = knobEl.id.startsWith('enc-');
+        const parts = id.split('-');
+        const isEQ = id.startsWith('enc-');
         const band = isEQ ? parts[1] : null;
         const param = isEQ ? parts[2] : null;
 
-        // --- FILTER OVERRIDE LOGIC (Optisch wie gewünscht) ---
         let visualVal = val;
         let forceOff = false;
 
@@ -953,42 +1009,46 @@ class YamahaTouchRemote {
             const chObj = (typeof ch === 'string' && ch === 'master') ? this.state.master : this.state.channels[parseInt(ch) - 1];
             if (chObj && chObj.eq[band]) {
                 const qVal = chObj.eq[band].q;
-                // --- HPF BINARY VISUAL SNAP ---
                 if (band === 'low' && qVal === 0) {
                     forceOff = (val < 64);
-                    visualVal = forceOff ? 0 : 127; // Snap to far left or far right
+                    visualVal = forceOff ? 0 : 127;
                 }
             }
         }
 
         const deg = ((visualVal / 127) * 260) - 130;
-        const indicator = knobEl.querySelector('.knob-indicator');
-        if (indicator) indicator.setAttribute('transform', `rotate(${deg}, 30, 30)`);
+        const indicator = this.elCache[`ind-${id}`];
+        if (indicator) {
+            indicator.style.webkitTransform = `rotate(${deg}deg)`;
+            indicator.style.transform = `rotate(${deg}deg)`;
+            // Origin 30,30 is set in SVG usually, but let's be safe
+            indicator.style.webkitTransformOrigin = '30px 30px';
+            indicator.style.transformOrigin = '30px 30px';
+        }
 
-        const ring = document.getElementById('ring-' + knobEl.id);
+        const ring = this.elCache[`ring-${id}`];
         if (ring) {
             const offset = 120 - ((visualVal / 127) * 120);
             ring.setAttribute('stroke-dashoffset', offset);
         }
 
         knobEl.dataset.midi = val;
-        const valEl = document.getElementById('val-' + knobEl.id);
+        const valEl = this.elCache[`val-${id}`];
         if (valEl) {
             const hexLabel = this.debugUI ? ` [${hex}]` : '';
-            if (knobEl.id.startsWith('pan-')) {
+            if (id.startsWith('pan-')) {
                 const hexLabelPan = this.debugUI ? ` (${hex})` : '';
                 if (val === 64) valEl.innerText = `CENTER${hexLabelPan}`;
                 else if (val < 64) valEl.innerText = `L${64 - val}${hexLabelPan}`;
                 else valEl.innerText = `R${val - 64}${hexLabelPan}`;
-            } else if (knobEl.id === 'enc-att') {
-                // ATTENUATION: -96 to +12
+            } else if (id === 'enc-att') {
                 const dB = ((val / 127) * 108 - 96).toFixed(1);
                 valEl.innerText = (dB > 0 ? '+' : '') + dB + ' dB' + hexLabel;
             } else if (isEQ) {
                 let display = hex;
                 if (param === 'gain') {
                     if (band === 'low' && forceOff) display = 'OFF';
-                    else if (band === 'low' && !forceOff && val === 127) display = 'ON'; // HPF 'ON'
+                    else if (band === 'low' && !forceOff && val === 127) display = 'ON';
                     else {
                         const dB = ((val / 127) * 36 - 18).toFixed(1);
                         display = (dB > 0 ? '+' : '') + dB + ' dB';
@@ -1002,7 +1062,6 @@ class YamahaTouchRemote {
                     else if (band === 'high' && val === 127) display = 'H.SHLF';
                     else if (band === 'high' && val === 0) display = 'LPF';
                     else {
-                        // Q Mapping: val=1 -> 10.0, val=126 -> 0.10
                         const qValRaw = 10 - ((val - 1) / 125) * 9.9;
                         display = Math.max(0.1, Math.min(10, qValRaw)).toFixed(2);
                     }
@@ -1025,13 +1084,40 @@ class YamahaTouchRemote {
     }
 
     updateFaderUI(id, value) {
-        const thumb = document.getElementById(`thumb-${id}`);
+        // Just queue it for the rAF loop
+        this.faderUpdateQueue.add(id);
+    }
+
+    updateFaderUIReal(id, value) {
+        if (!this.elCache[`thumb-${id}`]) {
+            this.elCache[`thumb-${id}`] = document.getElementById(`thumb-${id}`);
+            if (this.elCache[`thumb-${id}`]) {
+                const container = this.elCache[`thumb-${id}`].closest('.fader-area');
+                this.elCache[`cont-${id}`] = container;
+                this.elCache[`valText-${id}`] = document.getElementById(`val-${id}`);
+            }
+        }
+
+        const thumb = this.elCache[`thumb-${id}`];
         if (!thumb) return;
-        const container = thumb.closest('.fader-area');
+        const container = this.elCache[`cont-${id}`];
+        if (!container) return;
+
         const availableHeight = container.clientHeight - 64;
-        thumb.style.top = `${Math.max(0, Math.min(availableHeight, (1 - (value / 1023)) * availableHeight))}px`;
-        const valText = document.getElementById(`val-${id}`);
+        const topPos = Math.max(0, Math.min(availableHeight, (1 - (value / 1023)) * availableHeight));
+
+        thumb.style.webkitTransform = `translate3d(-50%, ${topPos}px, 0)`;
+        thumb.style.transform = `translate3d(-50%, ${topPos}px, 0)`;
+
+        const valText = this.elCache[`valText-${id}`];
         if (valText) valText.innerText = value;
+    }
+
+    flushFaderSends() {
+        for (const chId in this.pendingFaderSends) {
+            this.send('setFader', { channel: chId, value: this.pendingFaderSends[chId] });
+        }
+        this.pendingFaderSends = {};
     }
 
     updateMuteUI(ch, isMuted) {
@@ -1235,7 +1321,6 @@ class YamahaTouchRemote {
                 }
 
                 this.syncFaders();
-                this.syncFaders();
                 this.syncEQToSelected();
                 this.syncStoredGains(); // Ensure backup gains are populated from new state
             } else if (data.type === 'eq') {
@@ -1338,17 +1423,22 @@ class YamahaTouchRemote {
 
         const el = document.getElementById(`meter-${id}`);
         if (el) {
-            const pct = Math.min(100, (val / 32) * 100); // 32 is roughly max meter value in standard mode? Or 0-255?
-            // Meter values from Yamaha are usually 0x00-0x20 (32) or potentially higher depending on metering point.
-            // Assuming 0-32 based on previous mapping, or let's double check. 
-            // Standard meters 01V96: 32 segments. So val is 0..32.
+            const pct = Math.min(100, (val / 32) * 100);
+            const scale = pct / 100;
 
-            el.style.height = `${pct}%`;
+            // Use scaleY for performance
+            el.style.webkitTransform = `scaleY(${scale})`;
+            el.style.transform = `scaleY(${scale})`;
 
-            // Color
-            if (pct > 90) el.style.background = '#ff3b30'; // Clip
-            else if (pct > 70) el.style.background = '#ffcc00'; // Warning
-            else el.style.background = '#34c759'; // Normal
+            // Threshold-based color update to minimize DOM writes
+            let color = '#34c759';
+            if (pct > 90) color = '#ff3b30';
+            else if (pct > 70) color = '#ffcc00';
+
+            if (el.dataset.lastColor !== color) {
+                el.style.background = color;
+                el.dataset.lastColor = color;
+            }
         }
     }
 
