@@ -97,21 +97,33 @@ class Yamaha01V96Controller {
 
         if (this.meterInterval) clearInterval(this.meterInterval);
 
-        // Packet: F0 43 3n 3E 0D 21 [Grp] [IdxH] [IdxM] [IdxL] [Count] F7
-        const meterRequest = [
+        // Split into chunks of 16 to avoid SysEx buffer overflow
+        // Request 1: Ch 1-16
+        const req1 = [
             0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00,
-            0x00, 0x00, this.meterConfig.start,
-            this.meterConfig.count, 0xF7
+            0x00, 0x00, 0, 16, 0xF7
         ];
 
+        // Request 2: Ch 17-32
+        const req2 = [
+            0xF0, 0x43, 0x30, 0x3E, 0x0D, 0x21, 0x00,
+            0x00, 0x00, 16, 16, 0xF7 // Start at index 16 (Ch 17)
+        ];
+
+        const sendReq = () => {
+            if (this.connected) {
+                this.output.sendMessage(req1);
+                // Tiny delay for second packet
+                setTimeout(() => { if (this.connected) this.output.sendMessage(req2); }, 20);
+            }
+        };
+
         if (this.connected) {
-            this.output.sendMessage(meterRequest);
-            console.log(`📊 Metering Active: Ch ${this.meterConfig.start + 1}-${this.meterConfig.start + this.meterConfig.count} (${this.meterConfig.ms}ms)`);
+            sendReq();
+            console.log(`📊 Metering Active: Split Requests 1-16 & 17-32 (${this.meterConfig.ms}ms)`);
         }
 
-        this.meterInterval = setInterval(() => {
-            if (this.connected) this.output.sendMessage(meterRequest);
-        }, this.meterConfig.ms);
+        this.meterInterval = setInterval(sendReq, this.meterConfig.ms);
     }
 
     setMeterInterval(ms, range) {
