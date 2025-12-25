@@ -86,10 +86,55 @@ class ProView {
 
             // View Switch
             const viewId = btn.dataset.view;
-            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
-            const activeView = document.getElementById(`view-${viewId}`);
-            if (activeView) activeView.classList.add('active');
+            this.switchView(viewId);
         });
+    }
+
+    switchView(viewId) {
+        document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+        const activeView = document.getElementById(`view-${viewId}`);
+        if (activeView) activeView.classList.add('active');
+
+        // Dynamic Rendering based on View
+        if (viewId === 'aux') {
+            this.renderAuxView(this.currentAux || 0);
+        }
+    }
+
+    renderAuxView(auxIndex) {
+        this.currentAux = auxIndex;
+        const container = document.getElementById('view-aux');
+
+        let subNavHTML = '';
+        for (let i = 1; i <= 8; i++) {
+            const isActive = (i - 1 === auxIndex) ? 'active' : '';
+            subNavHTML += `<button class="aux-btn ${isActive}" data-aux="${i - 1}">AUX ${i}</button>`;
+        }
+
+        container.innerHTML = `
+            <div class="module-frame no-pad">
+                <div class="aux-subnav">${subNavHTML}</div>
+                <div class="aux-stage" id="aux-stage">
+                    <!-- Faders go here -->
+                </div>
+            </div>
+        `;
+
+        // Attach Events
+        container.querySelectorAll('.aux-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.renderAuxView(parseInt(btn.dataset.aux));
+                // TODO: Request Data
+            });
+        });
+
+        this.renderAuxFaders();
+    }
+
+    renderAuxFaders() {
+        // ... Placeholder
+        const stage = document.getElementById('aux-stage');
+        stage.innerHTML = '<div style="color:#666; padding:20px;">Faders for Aux ' + (this.currentAux + 1) + ' coming soon...</div>';
     }
 
     setupSettingsBtn() {
@@ -181,8 +226,13 @@ class ProView {
                     </div>
                 </div>
                 <div class="db-val-box" id="db-${i}"></div>
-                <!-- Status Indicators removed for stability on iOS 12 -->
-                <!-- <div class="status-row" id="status-${i}"> ... </div> -->
+                <div class="status-stack" id="st-${i}">
+                    <div class="st-ind eq" id="s-e-${i}"></div>
+                    <div class="st-ind gate" id="s-g-${i}"></div>
+                    <div class="st-ind comp" id="s-c-${i}"></div>
+                    <div class="st-ind fx" id="s-f-${i}"></div>
+                    <div class="st-ind mute" id="s-m-${i}"></div>
+                </div>
                 <div class="strip-label" id="label-${i}">${i}</div>
             `;
             bridge.appendChild(strip);
@@ -248,6 +298,30 @@ class ProView {
         return Math.round((val - 29) * 3 - 5);
     }
 
+    updateStatusIndicators(data) {
+        if (!data) return;
+        const process = (key, type) => {
+            const arr = data[key];
+            if (arr && arr.length) {
+                for (let i = 1; i <= this.meterCount; i++) {
+                    const state = arr[i - 1];
+                    const elId = `s-${type}-${i}`;
+                    if (!this.elCache[elId]) this.elCache[elId] = document.getElementById(elId);
+                    const el = this.elCache[elId];
+                    if (el) {
+                        if (state) el.classList.add('on');
+                        else el.classList.remove('on');
+                    }
+                }
+            }
+        };
+
+        process('m', 'm');    // Mute
+        process('e', 'e');    // EQ
+        process('g', 'g');    // Gate
+        process('co', 'c');   // Comp
+    }
+
     connect() {
         console.log('[VIEW] Connecting to:', this.wsUrl);
         this.socket = new WebSocket(this.wsUrl);
@@ -280,6 +354,7 @@ class ProView {
                 this.updateMeters(meterData.channels || meterData);
             } else if (t === 'state') {
                 if (data.s) this.settings = { ...this.settings, ...data.s };
+                this.updateStatusIndicators(data);
             } else if (t === 'r' || t === 'reload') {
                 location.reload();
             } else if (t === 'setUIOption') {
