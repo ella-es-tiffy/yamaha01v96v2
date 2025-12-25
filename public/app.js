@@ -27,7 +27,8 @@ class YamahaTouchRemote {
                     high: { q: 64, freq: 64, gain: 64 }
                 }
             })),
-            master: { fader: 0, mute: false, fxOn: false }
+            master: { fader: 0, mute: false, fxOn: false },
+            settings: { uiLocked: false }
         };
 
         this.init();
@@ -724,18 +725,30 @@ class YamahaTouchRemote {
 
         if (lockBtn && lockOverlay) {
             lockBtn.addEventListener('click', () => {
+                console.log('🔒 Locking UI...');
                 this.send('setUILock', { value: true });
             });
 
-            // Unlock when clicking ANYWHERE on the overlay (not just the surface)
-            lockOverlay.addEventListener('click', () => {
+            // Unlock when clicking ANYWHERE on the overlay
+            lockOverlay.addEventListener('click', (e) => {
+                console.log('🔓 Unlocking UI (Click)...');
                 this.send('setUILock', { value: false });
             });
 
             lockOverlay.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                console.log('🔓 Unlocking UI (Touch)...');
                 this.send('setUILock', { value: false });
             }, { passive: false });
+        }
+
+        const panicBtn = document.getElementById('panic-unlock-btn');
+        if (panicBtn) {
+            panicBtn.addEventListener('click', () => {
+                console.log('🚨 PANIC UNLOCK triggered');
+                this.send('setUILock', { value: false });
+                this.toggleDevPanel(); // Close dev panel afterwards
+            });
         }
     }
 
