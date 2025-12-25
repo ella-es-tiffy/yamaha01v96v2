@@ -48,7 +48,7 @@ class Yamaha01V96Controller {
             eqLibrary: {}, // Full parameter sets from DB
             settings: {
                 meterOffset: 0,
-                meterInterval: 8000,
+                meterInterval: 500, // Reduced from 8000ms for responsiveness
                 autoCloseSafety: false,
                 bankOnlyMetering: false
             }
@@ -527,6 +527,15 @@ class Yamaha01V96Controller {
 
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        // Update local state immediately
+        if (channel === 'master') {
+            this.state.master.fader = value;
+        } else {
+            const chIdx = parseInt(channel) - 1;
+            if (this.state.channels[chIdx]) this.state.channels[chIdx].fader = value;
+        }
+
         console.log(`🎚️ SetFader ${channel} -> ${value}`);
     }
 
@@ -546,6 +555,15 @@ class Yamaha01V96Controller {
         }
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        // Update local state immediately
+        if (channel === 'master') {
+            this.state.master.mute = isMuted;
+        } else {
+            const chIdx = parseInt(channel) - 1;
+            if (this.state.channels[chIdx]) this.state.channels[chIdx].mute = isMuted;
+        }
+
         console.log(`🔇 SetMute ${channel} -> ${isMuted}`);
     }
 
@@ -618,6 +636,12 @@ class Yamaha01V96Controller {
         const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x1B, 0x00, chIdx, ...dataBytes, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        // Update local state immediately
+        if (this.state.channels[chIdx]) {
+            this.state.channels[chIdx].pan = value;
+        }
+
         console.log(`↔️ Pan ${channel} -> ${mixerVal}`);
     }
 
@@ -628,6 +652,14 @@ class Yamaha01V96Controller {
         const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x0F, chIdx, 0x00, 0x00, 0x00, isOn ? 1 : 0, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        // Update local state immediately
+        if (channel === 'master') {
+            this.state.master.eqOn = isOn; // Assuming master has eqOn too
+        } else {
+            const chIdx_ = parseInt(channel) - 1;
+            if (this.state.channels[chIdx_]) this.state.channels[chIdx_].eqOn = isOn;
+        }
 
         console.log(`🔌 EQ ON/OFF ${channel} -> ${isOn}`);
     }
@@ -655,6 +687,12 @@ class Yamaha01V96Controller {
             this.output.sendMessage(msg);
         }
 
+        // Update local state immediately
+        const channelIdx_ = (channel === 'master') ? 'master' : (parseInt(channel) - 1);
+        if (channelIdx_ !== 'master' && this.state.channels[channelIdx_]) {
+            this.state.channels[channelIdx_].att = value;
+        }
+
         console.log(`📉 Attenuation ${channel} -> ${mixerVal / 10} dB (Mixer Raw: ${mixerVal})`);
     }
 
@@ -664,6 +702,15 @@ class Yamaha01V96Controller {
         const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, 0x00, chIdx, 0x00, 0x00, 0x00, type, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        // Update local state immediately
+        const chIdx_ = (channel === 'master') ? 'master' : (parseInt(channel) - 1);
+        if (chIdx_ === 'master') {
+            // master eq type not tracked?
+        } else if (this.state.channels[chIdx_]) {
+            this.state.channels[chIdx_].eqType = type;
+        }
+
         console.log(`🎚️ EQ Type ${channel} -> ${type}`);
     }
 
