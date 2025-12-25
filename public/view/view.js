@@ -133,16 +133,16 @@ class ProView {
     }
 
     setupPeakHoldBtn() {
-        const header = document.querySelector('.view-header');
-        if (!header) return;
+        const container = document.getElementById('bridge-container');
+        if (!container) return;
 
         const old = document.getElementById('peak-hold-toggle');
         if (old) old.remove();
 
         const btn = document.createElement('button');
         btn.id = 'peak-hold-toggle';
-        btn.className = 'settings-btn peak-btn';
-        btn.innerText = 'PEAK';
+        btn.className = 'peak-btn-vertical';
+        btn.innerHTML = 'P<br>E<br>A<br>K'; // Vertical text
         btn.addEventListener('touchstart', (e) => {
             this.togglePeakHold();
         }, { passive: true });
@@ -150,13 +150,8 @@ class ProView {
             this.togglePeakHold();
         });
 
-        // Insert before meter-toggle
-        const meterToggle = document.getElementById('meter-toggle');
-        if (meterToggle) {
-            header.insertBefore(btn, meterToggle);
-        } else {
-            header.appendChild(btn);
-        }
+        // Insert at the beginning (will be positioned via CSS)
+        container.insertBefore(btn, container.firstChild);
     }
 
     togglePeakHold() {
