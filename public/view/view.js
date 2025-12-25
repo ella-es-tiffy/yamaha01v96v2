@@ -317,15 +317,15 @@ class ProView {
                         peakEl.style.bottom = `${peakPct}%`;
                         peakEl.style.display = 'block';
 
-                        // Color based on peak level (match gradient zones)
+                        // Color based on peak level
                         const peakVal = this.peakValues[i];
                         let peakColor;
-                        if (peakVal >= 29) {
-                            peakColor = '#ff3b30'; // Red
-                        } else if (peakVal >= 24) {
-                            peakColor = '#ffcc00'; // Orange
+                        if (peakVal >= 32) {
+                            peakColor = '#ff3b30'; // Red (>= +6dB)
+                        } else if (peakVal >= 31) {
+                            peakColor = '#ffcc00'; // Orange (+3dB to +6dB)
                         } else {
-                            peakColor = '#34c759'; // Green
+                            peakColor = '#34c759'; // Green (< +3dB)
                         }
                         peakEl.style.background = peakColor;
                     }
