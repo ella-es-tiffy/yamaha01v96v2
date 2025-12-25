@@ -259,13 +259,17 @@ header.view-header {
     width: 100%;
     height: 100%;
     background: #111;
-    padding-right: 6px;
-    /* Make bar narrower by adding spacing */
+    padding-right: 0;
+    /* Handled by fixed widths */
+    justify-content: space-between;
+    /* Ticks -- Space -- Track */
+    padding: 0 4px;
+    /* Some outer padding */
 }
 
 .meter-tick-marks {
-    width: 8px;
-    /* Slightly wider */
+    width: 14px;
+    /* Wider Ticks */
     height: 100%;
     background: #0d0d0d;
     position: relative;
@@ -275,26 +279,26 @@ header.view-header {
 .tick {
     position: absolute;
     right: 0;
-    width: 4px;
-    /* Longer ticks */
+    width: 8px;
+    /* Wider */
     height: 1px;
     background: #888;
-    /* Brighter */
 }
 
 .tick.long {
-    width: 6px;
+    width: 14px;
+    /* Full width */
     background: #ccc;
-    /* Very bright for main ticks */
     height: 1px;
 }
 
 .meter-track {
-    flex: 1;
+    /* flex: 1; REMOVED */
+    width: 8px;
+    /* Narrower Bar (approx 1/2 of previous) */
     background: #080808;
     position: relative;
     border-bottom: 1px solid #222;
-    /* Bar is now narrower due to wrapper padding */
 }
 
 .meter-fill {
