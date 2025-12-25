@@ -185,4 +185,7 @@ class ProView {
     }
 }
 
-window.addEventListener('load', () => new ProView());
+window.addEventListener('load', () => {
+    // Slight delay to ensure layout is stable on some legacy browsers
+    setTimeout(() => new ProView(), 50);
+});
