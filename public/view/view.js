@@ -202,6 +202,10 @@ class ProView {
     }
 
     updateMeters(channels) {
+        const now = Date.now();
+        if (this.lastRender && (now - this.lastRender < 30)) return;
+        this.lastRender = now;
+
         const offset = this.settings.meterOffset || 0;
 
         // Initialize cache if needed
