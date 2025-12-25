@@ -1425,7 +1425,11 @@ class YamahaTouchRemote {
     }
 
     send(type, payload) {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ type, ...payload }));
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            var msg = Object.assign({ type: type }, payload);
+            console.log('[PRO-TOUCH] Sending:', type, payload);
+            this.socket.send(JSON.stringify(msg));
+        }
     }
 }
 window.addEventListener('load', () => new YamahaTouchRemote());

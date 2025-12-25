@@ -71,8 +71,8 @@ wss.on('connection', (ws) => {
             }
 
             // LIGHTWEIGHT BROADCAST: Send this change to all OTHER clients immediately
-            // This ensures Pro View sees Pro Touch changes (and vice versa) without waiting for Mixer feedback
             if (data.type.startsWith('set')) {
+                console.log(`[WS] Broadcasting ${data.type} to other clients`);
                 broadcast(data, ws);
             }
 

@@ -55,11 +55,12 @@ class ProView {
                 // Sync Ch 2 Mute State back to Toggle
                 const ch2 = data.data.channels[1]; // Ch 2 is index 1
                 if (ch2 && ch2.mute !== undefined) {
-                    this.toggleState = ch2.mute;
+                    this.isMuted = ch2.mute;
                     const btn = document.getElementById('test-toggle');
                     if (btn) {
-                        btn.classList.toggle('active', this.toggleState);
-                        btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
+                        btn.classList.toggle('active', !this.isMuted);
+                        btn.classList.toggle('muted', this.isMuted);
+                        btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
                     }
                 }
             } else if (data.type === 'reload') {
@@ -69,12 +70,14 @@ class ProView {
                 // Future: Update specific fader UI
                 console.log('[VIEW] Lightweight Fader Sync:', data.channel, data.value);
             } else if (data.type === 'setMute') {
+                console.log('[VIEW] Sync Mute:', data.channel, data.value);
                 if (parseInt(data.channel) === 2) {
-                    this.toggleState = data.value;
+                    this.isMuted = data.value;
                     const btn = document.getElementById('test-toggle');
                     if (btn) {
-                        btn.classList.toggle('active', this.toggleState);
-                        btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
+                        btn.classList.toggle('active', !this.isMuted);
+                        btn.classList.toggle('muted', this.isMuted);
+                        btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
                     }
                 }
             } else if (data.type === 'setPan') {
@@ -156,21 +159,22 @@ class ProView {
 
         const onToggle = (e) => {
             if (e.type === 'touchstart') e.preventDefault();
-            this.toggleState = !this.toggleState;
+            this.isMuted = !this.isMuted;
 
             // Send to Server: Toggle Mute for Channel 2
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                 this.socket.send(JSON.stringify({
                     type: 'setMute',
                     channel: 2,
-                    value: this.toggleState
+                    value: this.isMuted
                 }));
             }
 
             // Optimistic UI update
-            btn.classList.toggle('active', this.toggleState);
-            btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
-            console.log('[TOGGLE] CH2 Mute set to:', this.toggleState);
+            btn.classList.toggle('active', !this.isMuted);
+            btn.classList.toggle('muted', this.isMuted);
+            btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
+            console.log('[TOGGLE] CH2 Mute set to:', this.isMuted);
         };
 
         btn.addEventListener('touchstart', onToggle, { passive: false });
