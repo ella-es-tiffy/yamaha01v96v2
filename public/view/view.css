@@ -168,8 +168,7 @@ header.view-header {
     flex-direction: row;
     width: 100%;
     height: 35%;
-    gap: 5px;
-    /* Increased from 2px */
+    /* gap: 5px; REMOVED FOR LEGACY SUPPORT */
     background: #050505;
     padding: 5px 5px 0 5px;
     border-bottom: 2px solid #333;
@@ -185,6 +184,12 @@ header.view-header {
     overflow: hidden;
     position: relative;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    margin-right: 5px;
+    /* Legacy spacing */
+}
+
+.bridge-strip:last-child {
+    margin-right: 0;
 }
 
 .meter-track {
