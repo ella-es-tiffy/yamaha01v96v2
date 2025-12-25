@@ -296,13 +296,12 @@ header.view-header {
     width: 8px;
     /* Narrower Bar (approx 1/2 of previous) */
     background: linear-gradient(to top,
-            #34c759 0%,
-            /* -60dB (bottom) */
-            #34c759 70%,
-            /* ~0dB (adjusted lower) */
-            #ffcc00 92%,
-            /* +5dB */
-            #ff3b30 100%);
+            #34c759 0%, #34c759 70%,
+            /* Green zone (sharp end) */
+            #ffcc00 70%, #ffcc00 92%,
+            /* Orange zone (hard edges) */
+            #ff3b30 92%, #ff3b30 100%);
+    /* Red zone */
     /* Clip */
     position: relative;
     border-bottom: 1px solid #222;
