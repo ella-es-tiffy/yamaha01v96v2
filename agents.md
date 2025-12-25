@@ -10,5 +10,7 @@
 - **Scopes**: `proview` or `protouch`
 - **Example**: `v0.1mon proview mute-test`
 
-## Features
-- **Auto-Reload**: The `public/view` folder is watched by the server. Any changes to files in this directory will trigger an automatic browser reload for all connected Pro View clients.
+## Compatibility Strategy
+- **Pro Touch (`public/app.js`)**: Modern environment. Use modern JS syntax (Spread, etc.). No legacy constraints.
+- **Pro View (`public/view/`)**: Legacy environment (iOS 12). Avoid modern syntax (Spread, Template Literals if needed, etc.) to ensure operation on old hardware.
+- **Server (`server.js`)**: Agnostic bridge. Handles messages from both environments without requiring specific adaptations for one or the other.
