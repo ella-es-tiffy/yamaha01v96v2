@@ -224,14 +224,11 @@ class ProView {
 
                 // Update dB Box
                 if (dbEl) {
-                    if (val > 1) {
-                        const dbStr = this.valToDB(val);
-                        if (dbEl.innerText !== dbStr) {
-                            dbEl.innerText = dbStr;
-                            dbEl.style.color = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
-                        }
-                    } else {
-                        if (dbEl.innerText !== '') dbEl.innerText = '';
+                    // Always show value to prevent jumping
+                    const dbStr = this.valToDB(val);
+                    if (dbEl.innerText !== dbStr) {
+                        dbEl.innerText = dbStr;
+                        dbEl.style.color = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
                     }
                 }
                 // Clear old innerText
@@ -252,6 +249,7 @@ class ProView {
     }
 
     valToDB(val) {
+        if (val <= 0) return '-INF';
         if (val >= 31) return 'CLIP';
         if (val >= 29) return Math.round((val - 29) * 5 - 5);
         // Low range interpolation (1 -> -60dB, 29 -> -5dB)
