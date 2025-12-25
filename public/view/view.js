@@ -90,12 +90,40 @@ class ProView {
             const el = this.elCache[elId];
 
             if (el) {
-                // Map 0-32 (meter value) to 0-100% (CSS height)
-                // Linear mapping for now, matching the clean bar style
                 const pct = Math.min(100, (val / 32) * 100);
                 el.style.height = `${pct}%`;
+
+                // Show dB value
+                if (val > 4) {
+                    const dbStr = this.valToDB(val);
+                    if (el.dataset.lastDb !== dbStr && pct > 20) {
+                        el.innerText = dbStr;
+                        el.style.color = '#fff';
+                        el.style.fontSize = '0.55rem';
+                        el.style.fontWeight = '700';
+                        el.style.display = 'flex';
+                        el.style.justifyContent = 'center';
+                        el.style.alignItems = 'flex-start';
+                        el.style.paddingTop = '2px';
+                        el.style.textShadow = '0 1px 2px #000';
+                        el.dataset.lastDb = dbStr;
+                    } else if (pct <= 20) {
+                        el.innerText = '';
+                        el.dataset.lastDb = '';
+                    }
+                } else {
+                    if (el.dataset.lastDb) {
+                        el.innerText = '';
+                        el.dataset.lastDb = '';
+                    }
+                }
             }
         }
+    }
+
+    valToDB(val) {
+        if (val >= 32) return 'CLIP';
+        return Math.round((val - 32) * 1.5);
     }
 
     connect() {
