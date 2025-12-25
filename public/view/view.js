@@ -238,17 +238,6 @@ class ProView {
                 const pct = this.getMeterPct(val);
                 el.style.height = `${pct}%`;
 
-                // Segmented Color Logic (like hardware LED meters)
-                let color;
-                if (val >= 29) {
-                    color = '#ff3b30'; // Red (>= -5dB)
-                } else if (val >= 24) {
-                    color = '#ffcc00'; // Yellow/Orange (-15dB to -5dB)
-                } else {
-                    color = '#34c759'; // Green (< -15dB)
-                }
-                el.style.background = color;
-
                 // Clip Warning: Glow effect at >+5dB
                 if (val >= 31) {
                     el.classList.add('clip-mode');
