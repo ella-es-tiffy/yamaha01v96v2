@@ -575,7 +575,8 @@ header {
     -webkit-font-smoothing: subpixel-antialiased;
 }
 
-body.mode-dev-active #main-app-content {
+body.mode-dev-active #main-app-content,
+body.mode-lock-active #main-app-content {
     transform: scale(0.85) rotate(10deg) translateZ(0);
     filter: blur(5px) brightness(0.5);
     /* Reduced blur for smoother performance */
@@ -849,14 +850,33 @@ input[type=range]::-webkit-slider-thumb {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(15px);
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     z-index: 10000;
     display: none;
     align-items: center;
     justify-content: center;
+    opacity: 0;
+    transition: opacity 0.4s ease;
 }
 
 .global-lock-overlay.active {
+    opacity: 1;
     display: flex;
+}
+.unlock-surface {
+    background: rgba(20, 20, 20, 0.85);
+    border: 1px solid #444;
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+    will-change: transform;
+}
+
+.unlock-surface:active {
+    transform: scale(0.95);
 }

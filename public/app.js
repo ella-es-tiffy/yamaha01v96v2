@@ -725,10 +725,12 @@ class YamahaTouchRemote {
         if (lockBtn && lockOverlay) {
             lockBtn.addEventListener('click', () => {
                 lockOverlay.classList.add('active');
+                document.body.classList.add('mode-lock-active');
             });
 
             unlockSurface?.addEventListener('click', () => {
                 lockOverlay.classList.remove('active');
+                document.body.classList.remove('mode-lock-active');
             });
         }
     }
