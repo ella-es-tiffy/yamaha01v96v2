@@ -304,11 +304,12 @@ class ProView {
                             clearTimeout(this.peakTimers[i]);
                         }
 
-                        // Set new timer (2 second hold)
+                        // Set new timer (3 second hold)
                         this.peakTimers[i] = setTimeout(() => {
                             this.peakValues[i] = 0;
+                            this.peakRenderCache[i] = null;
                             if (peakEl) peakEl.style.display = 'none';
-                        }, 2000);
+                        }, 3000);
                     }
 
                     // Render peak dot - ONLY if value changed
@@ -335,12 +336,6 @@ class ProView {
                             this.peakRenderCache[i] = peakVal;
                         }
                     }
-                } else {
-                    // Hide peak when disabled
-                    const peakId = `peak-${i}`;
-                    if (!this.elCache[peakId]) this.elCache[peakId] = document.getElementById(peakId);
-                    const peakEl = this.elCache[peakId];
-                    if (peakEl) peakEl.style.display = 'none';
                 }
 
                 // Update dB Box - OPTIMIZED to avoid DOM Reads
