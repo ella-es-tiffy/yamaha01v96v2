@@ -72,6 +72,46 @@ class ProView {
         }
     }
 
+    connect() {
+        console.log('[VIEW] Connecting to:', this.wsUrl);
+        this.socket = new WebSocket(this.wsUrl);
+
+        this.socket.onopen = () => {
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.innerText = 'CONNECTED';
+                statusEl.style.color = '#34c759';
+            }
+        };
+
+        this.socket.onclose = () => {
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.innerText = 'DISCONNECTED';
+                statusEl.style.color = '#ff3b30';
+            }
+            setTimeout(() => this.connect(), 5000);
+        };
+
+        this.socket.onmessage = (msg) => {
+            const data = JSON.parse(msg.data);
+            const t = data.t || data.type;
+            const c = data.c || data.channel;
+            const v = (data.v !== undefined) ? data.v : data.value;
+
+            if (t === 'me' || t === 'meters') {
+                const meterData = data.d || data.data;
+                this.updateMeters(meterData.channels || meterData);
+            } else if (t === 'state') {
+                if (data.s) this.settings = { ...this.settings, ...data.s };
+            } else if (t === 'r' || t === 'reload') {
+                location.reload();
+            } else if (t === 'setUIOption') {
+                if (data.k === 'meterOffset') this.settings.meterOffset = data.v;
+            }
+        };
+    }
+
     setupEncoder() {
         const knob = document.getElementById('test-knob');
         if (!knob) return;
