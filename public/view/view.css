@@ -13,8 +13,10 @@
     --panel-bg: #141414;
     --strip-bg: #1a1a1a;
     --on-green: #34c759;
+    --on-glow: rgba(52, 199, 89, 0.4);
     --text-primary: #ffffff;
     --text-secondary: #888;
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 * {
@@ -46,19 +48,32 @@ body {
 }
 
 header.view-header {
-    height: 40px;
+    height: 48px;
     width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
-    background: #111;
-    border-bottom: 2px solid #222;
+    padding: 0 15px;
+    background: #1a1a1a;
+    border-bottom: 2px solid #333;
     position: relative;
     top: 0;
     left: 0;
     z-index: 100;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.brand {
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    color: #fff;
+}
+
+.model {
+    color: var(--accent);
+    font-weight: 300;
+    font-size: 0.9rem;
+    margin-left: 5px;
 }
 
 .view-nav {

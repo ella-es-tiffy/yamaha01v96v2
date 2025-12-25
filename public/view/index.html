@@ -29,141 +29,15 @@
         </header>
 
         <div class="view-stage">
-            <!-- MODULE: METER VIEW (Default) -->
-            <div id="view-meter" class="view-content active">
-                <div class="meters-test-grid">
-                    <!-- Row 1: 1-8 -->
-                    <div class="test-meter-wrapper" id="ch-1">
-                        <div class="test-meter-track">
-                            <div id="meter-1" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">1</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-2">
-                        <div class="test-meter-track">
-                            <div id="meter-2" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">2</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-3">
-                        <div class="test-meter-track">
-                            <div id="meter-3" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">3</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-4">
-                        <div class="test-meter-track">
-                            <div id="meter-4" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">4</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-5">
-                        <div class="test-meter-track">
-                            <div id="meter-5" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">5</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-6">
-                        <div class="test-meter-track">
-                            <div id="meter-6" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">6</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-7">
-                        <div class="test-meter-track">
-                            <div id="meter-7" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">7</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-8">
-                        <div class="test-meter-track">
-                            <div id="meter-8" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">8</div>
-                    </div>
+            <!-- MODULE: METER BRIDGE (Dynamic) -->
+            <div id="view-meter" class="view-content active"></div>
 
-                    <!-- Row 2: 9-16 -->
-                    <div class="test-meter-wrapper" id="ch-9">
-                        <div class="test-meter-track">
-                            <div id="meter-9" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">9</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-10">
-                        <div class="test-meter-track">
-                            <div id="meter-10" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">10</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-11">
-                        <div class="test-meter-track">
-                            <div id="meter-11" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">11</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-12">
-                        <div class="test-meter-track">
-                            <div id="meter-12" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">12</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-13">
-                        <div class="test-meter-track">
-                            <div id="meter-13" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">13</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-14">
-                        <div class="test-meter-track">
-                            <div id="meter-14" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">14</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-15">
-                        <div class="test-meter-track">
-                            <div id="meter-15" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">15</div>
-                    </div>
-                    <div class="test-meter-wrapper" id="ch-16">
-                        <div class="test-meter-track">
-                            <div id="meter-16" class="test-meter-fill"></div>
-                        </div>
-                        <div class="test-label">16</div>
-                    </div>
-                </div>
-
-                <div class="sidebar-test">
-                    <!-- 1 Encoder -->
-                    <div class="encoder-test-area">
-                        <div class="section-title">ENCODER TEST</div>
-                        <svg id="test-knob" class="knob-svg" viewBox="0 0 60 60" data-midi="64">
-                            <circle class="knob-ring-bg" cx="30" cy="30" r="24"></circle>
-                            <circle id="ring-test-knob" class="knob-ring-val" cx="30" cy="30" r="24"
-                                stroke-dasharray="150.8" stroke-dashoffset="75" transform="rotate(135, 30, 30)">
-                            </circle>
-                            <circle class="knob-body" cx="30" cy="30" r="18"></circle>
-                            <rect id="ind-test-knob" class="knob-indicator" x="29" y="12" width="2" height="10" rx="1">
-                            </rect>
-                        </svg>
-                        <div id="val-test-knob">64</div>
-                    </div>
-
-                    <!-- Toggle Test -->
-                    <div class="toggle-test-area">
-                        <div class="section-title">TOGGLE TEST</div>
-                        <div id="test-toggle" class="test-toggle-btn">OFF</div>
-                    </div>
-                </div>
-            </div>
+            <!-- MODULE PLACEHOLDERS -->
+            <div id="view-aux" class="view-content"></div>
+            <div id="view-fx" class="view-content"></div>
+            <div id="view-dyn" class="view-content"></div>
+            <div id="view-eq" class="view-content"></div>
         </div>
-
-        <!-- Placeholders for other views -->
-        <div id="view-aux" class="view-content"></div>
-        <div id="view-fx" class="view-content"></div>
-        <div id="view-dyn" class="view-content"></div>
-        <div id="view-eq" class="view-content"></div>
-    </div>
     </div>
 
     <script src="view.js"></script>
