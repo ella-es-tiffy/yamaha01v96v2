@@ -79,6 +79,19 @@ class ProView {
                 handleUnlock();
             }, { passive: false });
         }
+
+        const lockBtn = document.getElementById('lock-ui-btn');
+        if (lockBtn) {
+            const handleLock = () => {
+                console.log('🔒 Locking UI (PV Local)...');
+                this.sendLock(true);
+            };
+            lockBtn.addEventListener('click', handleLock);
+            lockBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleLock();
+            }, { passive: false });
+        }
     }
 
     setupNavigation() {

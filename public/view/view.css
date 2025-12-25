@@ -107,6 +107,18 @@ header.view-header {
     align-items: center;
 }
 
+.nav-btn.lock-btn-pv {
+    background: rgba(255, 59, 48, 0.1);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    color: #ff3b30;
+    font-weight: 900;
+}
+
+.nav-btn.lock-btn-pv:active {
+    background: #ff3b30;
+    color: #fff;
+}
+
 .nav-btn {
     background: #1a1a1a;
     border: 1px solid #333;
