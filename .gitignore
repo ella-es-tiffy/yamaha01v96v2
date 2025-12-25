@@ -3,5 +3,6 @@ agents.md
 *.log
 .DS_Store
 .env
-!agents.md
 .venv/
+server.js.bak
+dev/startup_log.txt
