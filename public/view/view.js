@@ -108,11 +108,8 @@ class ProView {
     updateMeters(channels) {
         const offset = this.settings.meterOffset || 0;
 
-        // Update 32 meters
         for (let i = 1; i <= 32; i++) {
             let val = channels[i - 1] || 0;
-
-            // Apply noise gate
             const gateThreshold = (offset / 100) * 32;
             if (val < gateThreshold) val = 0;
 
@@ -121,7 +118,8 @@ class ProView {
             const el = this.elCache[elId];
 
             if (el) {
-                const pct = Math.min(100, (val / 32) * 100);
+                // Non-Linear Mapping to match the scale
+                const pct = this.getMeterPct(val);
                 el.style.height = `${pct}%`;
 
                 // Show dB value
@@ -143,18 +141,47 @@ class ProView {
                         el.dataset.lastDb = '';
                     }
                 } else {
-                    if (el.dataset.lastDb) {
-                        el.innerText = '';
-                        el.dataset.lastDb = '';
-                    }
+                    if (el.dataset.lastDb) el.innerText = '';
                 }
             }
         }
     }
 
+    getMeterPct(val) {
+        if (val <= 0) return 0;
+        if (val >= 32) return 100;
+
+        // Piecewise approximation for Yamaha Scale
+        // 32 (+10dB) -> 100%
+        // 28 (+5dB)  -> 85%
+        // 24 (0dB)   -> 75%
+        // 20 (-5dB)  -> 65%
+        // 16 (-10dB) -> 55%
+        // 12 (-15dB) -> 45%
+        // 8  (-20dB) -> 35%
+        // 4  (-30dB) -> 20%
+        // 0  (-oo)   -> 0%
+
+        // It looks like each step of 4 is roughly 10-12.5% change in this visual scale
+        // Slope = 2.5 per unit
+
+        // Let's use: percentage = 2.5 * val + 15
+        // Check:
+        // 32 * 2.5 + 15 = 80 + 15 = 95 (Close enough to 100)
+        // 24 * 2.5 + 15 = 60 + 15 = 75 (MATCH 0dB!)
+        // 16 * 2.5 + 15 = 40 + 15 = 55 (MATCH -10dB!)
+        // 8 * 2.5 + 15 = 20 + 15 = 35 (MATCH -20dB!)
+
+        let p = (2.5 * val) + 15;
+        // Fine tune low end to not jump too fast
+        if (val < 4) p = val * 5; // 0->0, 2->10, 4->20
+
+        return Math.min(100, Math.max(0, p));
+    }
+
     valToDB(val) {
-        if (val >= 32) return 'CLIP';
-        return Math.round((val - 32) * 1.8);
+        if (val >= 28) return 'CLIP'; // > +5dB shows CLIP
+        return Math.round((val - 24) * 2.5); // 24=0dB, 2.5 scaling Factor
     }
 
     connect() {
