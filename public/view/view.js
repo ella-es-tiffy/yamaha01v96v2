@@ -21,6 +21,11 @@ class ProView {
         this.peakTimers = new Array(33).fill(null); // Timeout handles
         this.peakRenderCache = new Array(33).fill(null); // Last rendered peak
 
+        // Performance tracking
+        this.meterUpdateCount = 0;
+        this.wsMessageCount = 0;
+        this.lastStatsUpdate = performance.now();
+
         this.init();
     }
 
@@ -266,6 +271,8 @@ class ProView {
         if (this.lastRender && (now - this.lastRender < 30)) return;
         this.lastRender = now;
 
+        this.meterUpdateCount++; // Track updates
+
         const offset = this.settings.meterOffset || 0;
 
         // Initialize cache if needed
@@ -427,6 +434,8 @@ class ProView {
         };
 
         this.socket.onmessage = (msg) => {
+            this.wsMessageCount++; // Track WS traffic
+
             const data = JSON.parse(msg.data);
             const t = data.t || data.type;
             const c = data.c || data.channel;
@@ -524,27 +533,26 @@ class ProView {
     }
 
     startRaf() {
-        let lastTime = performance.now();
-        let frames = 0;
-        let fps = 0;
-        let frameTime = 0;
-
         const statsEl = document.getElementById('perf-stats');
 
         const loop = () => {
+            // Update stats every second
             const now = performance.now();
-            const delta = now - lastTime;
+            const elapsed = now - this.lastStatsUpdate;
 
-            frames++;
-            if (frames >= 30) {
-                fps = Math.round(1000 / (delta / frames));
-                frameTime = Math.round(delta / frames * 10) / 10;
-                if (statsEl) {
-                    statsEl.innerText = `${fps} FPS\n${frameTime}ms`;
-                }
-                frames = 0;
+            if (elapsed >= 1000 && statsEl) {
+                const seconds = elapsed / 1000;
+                const wsPerSec = Math.round(this.wsMessageCount / seconds);
+                const updatesPerSec = Math.round(this.meterUpdateCount / seconds);
+                const activePeaks = this.peakValues.filter(v => v > 0).length;
+
+                statsEl.innerText = `WS: ${wsPerSec}/s\nMTR: ${updatesPerSec}/s\nPK: ${activePeaks}`;
+
+                // Reset counters
+                this.wsMessageCount = 0;
+                this.meterUpdateCount = 0;
+                this.lastStatsUpdate = now;
             }
-            lastTime = now;
 
             if (this.updateQueue.has('test-knob')) {
                 this.renderKnob('test-knob', this.currentMidi);
