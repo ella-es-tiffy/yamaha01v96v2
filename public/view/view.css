@@ -195,6 +195,12 @@ header.view-header {
     flex-direction: column;
 }
 
+.module-frame.short {
+    height: 35vh;
+    /* 1/3 Screen Height approx */
+    min-height: 250px;
+}
+
 .meter-bridge-container {
     display: flex;
     flex-direction: row;

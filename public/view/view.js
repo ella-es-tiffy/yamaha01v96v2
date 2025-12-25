@@ -140,7 +140,7 @@ class ProView {
 
         // Wrap in Module Frame
         container.innerHTML = `
-            <div class="module-frame">
+            <div class="module-frame short">
                 <div class="meter-bridge-container" id="bridge-container"></div>
             </div>
         `;
