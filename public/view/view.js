@@ -21,9 +21,30 @@ class ProView {
 
     init() {
         this.connect();
+        this.setupNavigation();
         this.setupEncoder();
         this.setupToggle();
         this.startRaf();
+    }
+
+    setupNavigation() {
+        const navContainer = document.getElementById('main-nav');
+        if (!navContainer) return;
+
+        navContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.nav-btn');
+            if (!btn) return;
+
+            // UI Update
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // View Switch
+            const viewId = btn.dataset.view;
+            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+            const activeView = document.getElementById(`view-${viewId}`);
+            if (activeView) activeView.classList.add('active');
+        });
     }
 
     getEventCoords(e) {

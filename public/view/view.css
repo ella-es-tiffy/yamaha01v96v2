@@ -42,28 +42,70 @@ body {
     flex-direction: column;
     height: 100vh;
     width: 100vw;
-    padding: 15px;
+    background: #000;
 }
 
 header.view-header {
-    height: 60px;
+    height: 40px;
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 20px;
+    padding: 0 10px;
+    background: #111;
+    border-bottom: 2px solid #222;
+    position: relative;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.view-nav {
+    display: flex;
+    gap: 4px;
+    height: 100%;
+    align-items: center;
+}
+
+.nav-btn {
     background: #1a1a1a;
-    border-bottom: 2px solid #333;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border: 1px solid #333;
+    color: #666;
+    height: 30px;
+    border-radius: 4px;
+    padding: 0 15px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nav-btn.active {
+    background: #0088cc;
+    color: #fff;
+    border-color: #00aaff;
+    box-shadow: 0 0 10px rgba(0, 136, 204, 0.4);
+}
+
+.view-stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    padding: 10px;
+    margin-top: 0;
 }
 
 .view-content {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.view-content.active {
     display: flex;
-    flex-direction: row;
-    flex: 1;
-    overflow: hidden;
-    gap: 15px;
 }
 
 .sidebar-test {
