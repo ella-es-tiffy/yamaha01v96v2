@@ -575,9 +575,9 @@ class YamahaTouchRemote {
             const masterAddr = document.getElementById('addr-master');
             if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
 
-            // TOGGLE DEV PANEL
+            // TOGGLE DEV PANEL (Fullscreen Overlay)
             const devPanel = document.getElementById('dev-panel');
-            if (devPanel) devPanel.style.display = this.debugUI ? 'flex' : 'none';
+            if (devPanel) devPanel.classList.toggle('active', this.debugUI);
         });
 
         // Developer Settings Handlers

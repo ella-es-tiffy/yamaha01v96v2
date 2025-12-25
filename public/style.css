@@ -565,20 +565,23 @@ header {
     justify-content: flex-end;
 }
 
-/* --- MODULE: Developer & Debug Panel --- */
+/* --- MODULE: Developer & Debug Panel (Fullscreen Overlay) --- */
 .dev-panel {
-    flex: 0 0 240px;
-    background: linear-gradient(180deg, #1a1a1a 0%, #111 100%);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    margin-left: 15px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    height: fit-content;
-    align-self: flex-start;
-    margin-top: 10px;
+    position: fixed;
+    top: 40px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 10, 10, 0.98);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    overflow-y: auto;
+    padding: 30px;
+    display: none;
+}
+
+.dev-panel.active {
+    display: block;
 }
 
 .dev-header {
