@@ -123,7 +123,7 @@ class ProView {
 
     valToDB(val) {
         if (val >= 32) return 'CLIP';
-        return Math.round((val - 32) * 1.5);
+        return Math.round((val - 32) * 1.8);
     }
 
     connect() {
