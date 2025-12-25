@@ -524,7 +524,28 @@ class ProView {
     }
 
     startRaf() {
+        let lastTime = performance.now();
+        let frames = 0;
+        let fps = 0;
+        let frameTime = 0;
+
+        const statsEl = document.getElementById('perf-stats');
+
         const loop = () => {
+            const now = performance.now();
+            const delta = now - lastTime;
+
+            frames++;
+            if (frames >= 30) {
+                fps = Math.round(1000 / (delta / frames));
+                frameTime = Math.round(delta / frames * 10) / 10;
+                if (statsEl) {
+                    statsEl.innerText = `${fps} FPS\n${frameTime}ms`;
+                }
+                frames = 0;
+            }
+            lastTime = now;
+
             if (this.updateQueue.has('test-knob')) {
                 this.renderKnob('test-knob', this.currentMidi);
                 this.updateQueue.delete('test-knob');
