@@ -726,19 +726,23 @@ class YamahaTouchRemote {
         if (lockBtn && lockOverlay) {
             lockBtn.addEventListener('click', () => {
                 console.log('🔒 Locking UI...');
+                lockOverlay.classList.add('active');
+                document.body.classList.add('mode-lock-active');
                 this.send('setUILock', { value: true });
             });
 
-            // Unlock when clicking ANYWHERE on the overlay
-            lockOverlay.addEventListener('click', (e) => {
-                console.log('🔓 Unlocking UI (Click)...');
+            // Optimistic Unlock (UI opens immediately, then sends to server)
+            const handleUnlock = () => {
+                console.log('🔓 Unlocking UI (Local/Optimistic)...');
+                lockOverlay.classList.remove('active');
+                document.body.classList.remove('mode-lock-active');
                 this.send('setUILock', { value: false });
-            });
+            };
 
+            lockOverlay.addEventListener('click', handleUnlock);
             lockOverlay.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                console.log('🔓 Unlocking UI (Touch)...');
-                this.send('setUILock', { value: false });
+                handleUnlock();
             }, { passive: false });
         }
 
@@ -1149,13 +1153,23 @@ class YamahaTouchRemote {
                     const autoCloseChk = document.getElementById('chk-auto-close-safety');
                     if (autoCloseChk) autoCloseChk.checked = this.autoCloseSafety;
 
-                    // SYNC UI LOCK STATE
+                    // SYNC UI LOCK STATE (from State Broadcast)
                     const lockOverlay = document.getElementById('global-lock-overlay');
                     if (lockOverlay) {
-                        const isLocked = newState.settings.uiLocked;
+                        const isLocked = !!newState.settings.uiLocked;
+                        console.log('📡 Syncing UI Lock from State:', isLocked);
                         lockOverlay.classList.toggle('active', isLocked);
                         document.body.classList.toggle('mode-lock-active', isLocked);
                     }
+                }
+            } else if (data.type === 'setUILock') {
+                // Direct specific broadcast for speed
+                const isLocked = !!data.value;
+                console.log('📡 Syncing UI Lock from direct message:', isLocked);
+                const lockOverlay = document.getElementById('global-lock-overlay');
+                if (lockOverlay) {
+                    lockOverlay.classList.toggle('active', isLocked);
+                    document.body.classList.toggle('mode-lock-active', isLocked);
                 }
 
                 // Handle Dynamic EQ Presets Update

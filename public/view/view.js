@@ -66,12 +66,17 @@ class ProView {
     setupLockUI() {
         const lockOverlay = document.getElementById('global-lock-overlay');
         if (lockOverlay) {
-            lockOverlay.addEventListener('click', () => {
+            const handleUnlock = () => {
+                console.log('🔓 Unlocking UI (PV Local)...');
+                lockOverlay.classList.remove('active');
+                document.body.classList.remove('mode-lock-active');
                 this.sendLock(false);
-            });
+            };
+
+            lockOverlay.addEventListener('click', handleUnlock);
             lockOverlay.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                this.sendLock(false);
+                handleUnlock();
             }, { passive: false });
         }
     }
@@ -487,10 +492,10 @@ class ProView {
                 this.updateStatusIndicators(data);
             } else if (t === 'r' || t === 'reload') {
                 location.reload();
-            } else if (t === 'setUIOption') {
+            } else if (t === 'setUIOption' || t === 'l') {
                 if (data.k === 'meterOffset') this.settings.meterOffset = data.v;
-                if (data.k === 'uiLocked') {
-                    this.settings.uiLocked = data.v;
+                if (data.k === 'uiLocked' || t === 'l') {
+                    this.settings.uiLocked = (data.v !== undefined) ? data.v : data.value;
                     this.syncLockState();
                 }
             }
