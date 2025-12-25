@@ -61,6 +61,23 @@ class ProView {
         container.innerHTML = `<div class="meter-bridge-container" id="bridge-container"></div>`;
         const bridge = document.getElementById('bridge-container');
 
+        // Left Scale Strip
+        const scaleStrip = document.createElement('div');
+        scaleStrip.className = 'meter-scale-strip';
+        scaleStrip.innerHTML = `
+            <div class="scale-val" style="top: 0%">10</div>
+            <div class="scale-val" style="top: 15%">5</div>
+            <div class="scale-val" style="top: 25%">0</div>
+            <div class="scale-val" style="top: 35%">5</div>
+            <div class="scale-val" style="top: 45%">10</div>
+            <div class="scale-val" style="top: 55%">15</div>
+            <div class="scale-val" style="top: 65%">20</div>
+            <div class="scale-val" style="top: 80%">30</div>
+            <div class="scale-val" style="top: 90%">40</div>
+            <div class="scale-val" style="top: 96%">50</div>
+        `;
+        bridge.appendChild(scaleStrip);
+
         for (let i = 1; i <= 32; i++) {
             const strip = document.createElement('div');
             strip.className = 'bridge-strip';
@@ -75,6 +92,8 @@ class ProView {
                         <div class="tick" style="top:55%"></div>
                         <div class="tick" style="top:65%"></div>
                         <div class="tick" style="top:80%"></div>
+                        <div class="tick" style="top:90%"></div>
+                        <div class="tick" style="top:96%"></div>
                     </div>
                     <div class="meter-track">
                         <div class="meter-fill" id="meter-${i}"></div>
