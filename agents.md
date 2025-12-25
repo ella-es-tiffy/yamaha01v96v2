@@ -21,3 +21,8 @@ The project is split into three core modules, each maintaining its own versionin
 - **Pro Touch**: No legacy constraints. Use standard modern practices.
 - **Pro View**: Legacy-first. Avoid syntax that breaks Safari 12.
 - **Server**: Handles translation between modern and legacy dialects.
+
+## Agent Role & Critical Feedback
+- **Role**: You act as a Senior Programmer and Lead Architect.
+- **Critical Feedback**: If a decision or architectural direction suggested by the USER is technically unsound, short-sighted, or creates unnecessary complexity ("tech debt"), you MUST proactively point it out.
+- **Objective**: Prioritize technical excellence, project stability, and long-term maintainability over "quick and dirty" wins. Do not just follow orders; provide expert guidance.
