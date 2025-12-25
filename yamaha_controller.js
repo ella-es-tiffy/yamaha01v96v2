@@ -4,6 +4,7 @@ const EQPresetManager = require('./lib/eqPresets');
 const BulkParser = require('./lib/bulkParser');
 const MIDIHelpers = require('./lib/midiHelpers');
 const FACTORY_EQ_PRESETS = require('./lib/factoryPresets');
+const db = require('./lib/db');
 
 class Yamaha01V96Controller {
     constructor(portNumber = 0) {
@@ -43,8 +44,50 @@ class Yamaha01V96Controller {
                 routing: { stereo: false, direct: false, bus: Array(8).fill(false) }
             })),
             master: { fader: 0, mute: false, solo: false },
-            eqPresets: { ...FACTORY_EQ_PRESETS } // Pre-populate with factory names
+            eqPresets: { ...FACTORY_EQ_PRESETS }, // Names
+            eqLibrary: {}, // Full parameter sets from DB
+            settings: {
+                meterOffset: 0,
+                meterInterval: 8000,
+                autoCloseSafety: false,
+                bankOnlyMetering: false
+            }
         };
+
+        this.loadLibrary();
+    }
+
+    async loadLibrary() {
+        try {
+            // Load EQ Presets
+            const presets = await db.getAllPresets();
+            presets.forEach(p => {
+                this.state.eqLibrary[p.id] = p;
+                if (p.id > 40) this.state.eqPresets[p.id] = p.name;
+            });
+            console.log(`[DB] Loaded ${presets.length} presets from library.`);
+
+            // Load System Settings
+            const savedSettings = await db.getSetting('system_config');
+            if (savedSettings) {
+                this.state.settings = { ...this.state.settings, ...savedSettings };
+                console.log(`[DB] System settings restored:`, this.state.settings);
+
+                // Automatically apply loaded metering config
+                this.meterConfig.ms = this.state.settings.meterInterval;
+            }
+        } catch (e) {
+            console.error('[DB] Error loading library/settings:', e);
+        }
+    }
+
+    async saveSystemSettings() {
+        try {
+            await db.saveSetting('system_config', this.state.settings);
+            console.log('[DB] System settings saved.');
+        } catch (e) {
+            console.error('[DB] Error saving system settings:', e);
+        }
     }
 
     startMetering(ms, start, count) {
@@ -75,7 +118,25 @@ class Yamaha01V96Controller {
         const safeMs = ms ? Math.max(1000, ms) : this.meterConfig.ms;
         const start = range ? range.start : this.meterConfig.start;
         const count = range ? range.count : this.meterConfig.count;
+
+        this.state.settings.meterInterval = safeMs;
+        this.saveSystemSettings();
+
         this.startMetering(safeMs, start, count);
+    }
+
+    setMeterOffset(val) {
+        this.state.settings.meterOffset = val;
+        this.saveSystemSettings();
+        if (this.onStateChange) this.onStateChange(this.state);
+    }
+
+    setUIOption(key, val) {
+        if (this.state.settings.hasOwnProperty(key)) {
+            this.state.settings[key] = val;
+            this.saveSystemSettings();
+            if (this.onStateChange) this.onStateChange(this.state);
+        }
     }
 
     connect() {
@@ -110,17 +171,11 @@ class Yamaha01V96Controller {
 
     async requestInitialState() {
         if (!this.connected) return;
-        console.log('📥 Requesting EQ Library Bulk Dump (to get Preset Names)...');
+        console.log('📥 Requesting EQ Library Names (Bulk Request)...');
 
-        const headers = [0x10, 0x20, 0x30];
-        headers.forEach((h, i) => {
-            setTimeout(() => {
-                if (this.output) {
-                    try { this.output.sendMessage([0xF0, 0x43, h, 0x3E, 0x02, 0x02, 0xF7]); } catch (e) { }
-                    try { this.output.sendMessage([0xF0, 0x43, h, 0x3E, 0x0E, 0x02, 0xF7]); } catch (e) { }
-                }
-            }, i * 500);
-        });
+        // Only use Bulk Request (0x20) - 0x10 and 0x30 are for changes/individual params
+        const msgNames = [0xF0, 0x43, 0x20, 0x3E, 0x02, 0x02, 0xF7];
+        this.output.sendMessage(msgNames);
     }
 
     handleMidiMessage(deltaTime, message) {
@@ -253,12 +308,19 @@ class Yamaha01V96Controller {
                                                 const rawG = (message[f7Pos - 4] === 0x7F) ? -((0x7F - message[f7Pos - 2]) * 128 + (0x80 - message[f7Pos - 1])) : val14;
                                                 fv = Math.round(((rawG + 180) / 360) * 127);
                                             }
-                                            if (!isNaN(fv)) ch.eq[m.b][m.p] = fv;
+                                            if (!isNaN(fv)) {
+                                                ch.eq[m.b][m.p] = fv;
+                                                // Automatic DB consistency (If we are in "EDIT" we could save here too, 
+                                                // but usually we only save on deliberate Store or Scan)
+                                            }
                                         }
                                     }
                                     break;
                             }
                             changed = true;
+
+                            // SMART: If this is channel 32 during a scan, we might want to trigger a DB save
+                            // But usually we prefer the full sync check.
                         }
                     } else if (element === 0x4F) { this.state.master.fader = val14; changed = true; }
                     else if (element === 0x4D) { this.state.master.mute = (val7 === 0); changed = true; }
@@ -307,7 +369,7 @@ class Yamaha01V96Controller {
                 message[5] === 0x10 && message[6] === 0x41 && message[7] === 0x00 &&
                 message.length >= 25) { // At least header + 16 chars name
 
-                const presetId = message[8];
+                const presetId = message[8]; // 1-based ID
                 let name = "";
 
                 // Read ASCII name from byte 9 onwards (up to 16 chars)
@@ -318,32 +380,28 @@ class Yamaha01V96Controller {
                 }
                 name = name.trim();
 
-                console.log(`[STORE] Preset ${presetId + 1} stored as "${name}"`);
+                console.log(`[STORE DETECTED] Preset #${presetId} stored as "${name}"`);
 
-                // Store in state
+                // Store in both state and manager
                 if (!this.state.eqPresets) this.state.eqPresets = {};
-                this.state.eqPresets[presetId + 1] = name;
+                this.state.eqPresets[presetId] = name;
+                this.eqPresets.setPresets(this.state.eqPresets);
+
                 this.emitEQPresets();
             }
 
-            // E: EQ Recall Echo Detection (for auto-fetch attempts)
-            // When mixer loads a preset, it echoes: F0 43 1X 3E 7F 10 01 00 [ID] 00 00 F7
+            // E: EQ Recall Echo Detection (Mixer hardware changed preset)
+            // F0 43 1X 3E 7F 10 01 00 [ID] 00 00 F7
             if (message[0] === 0xF0 && message[1] === 0x43 &&
-                (message[2] & 0xF0) === 0x10 && // Device 1X
+                (message[2] & 0xF0) === 0x10 &&
                 message[3] === 0x3E && message[4] === 0x7F &&
-                message[5] === 0x10 && message[6] === 0x01 && message[7] === 0x00 &&
-                message.length === 12) {
+                message[5] === 0x10 && message[6] === 0x01 && message.length === 12) {
 
                 const presetId = message[8];
-                console.log(`[RECALL ECHO] Detected preset recall: ID ${presetId}`);
+                console.log(`📡 Mixer HW Recall Detected -> Preset #${presetId}`);
 
-                // Request Parameter Dump for this specific preset to get its name
-                // F0 43 30 3E 7F 10 01 00 [ID] F7
-                setTimeout(() => {
-                    const dumpReq = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x10, 0x01, 0x00, presetId, 0xF7];
-                    console.log(`[AUTO-REQUEST] Fetching name for Preset ID ${presetId}...`);
-                    this.output.sendMessage(dumpReq);
-                }, 100); // Small delay to avoid MIDI buffer overload
+                // Smart Logic: Update UI from Cache if possible, skip requests
+                this.recallEQ(this.state.selectedChannel, presetId, true);
             }
 
             // C: Bulk Dump Handling (Channel Names & EQ Lib)
@@ -491,7 +549,7 @@ class Yamaha01V96Controller {
         console.log(`🔇 SetMute ${channel} -> ${isMuted}`);
     }
 
-    setEQ(channel, band, type, value) {
+    setEQ(channel, band, type, value, silent = false) {
         if (!this.connected) return;
 
         const chIdx = parseInt(channel) - 1;
@@ -535,6 +593,13 @@ class Yamaha01V96Controller {
         const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x01, 0x20, p1, chIdx, ...dataBytes, 0xF7];
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
+
+        // Update local state immediately
+        const channelIdx = parseInt(channel) - 1;
+        if (this.state.channels[channelIdx] && this.state.channels[channelIdx].eq[band]) {
+            this.state.channels[channelIdx].eq[band][type] = value;
+            if (!silent && this.onStateChange) this.onStateChange(this.state);
+        }
 
         console.log(`🎛️ EQ ${channel} ${band}.${type} -> ${value}`);
     }
@@ -617,35 +682,144 @@ class Yamaha01V96Controller {
 
     resetEQ(channel) {
         if (!this.connected) return;
-        // Default Values: Gain=0dB (64), Q=1.0 (115)
-        // Freqs: Low=75Hz (23), LMid=250Hz (46), HMid=1.5kHz (79), High=10kHz (114)
 
-        const settings = [
+        // Reference Neutral Values (iPad Units 0-127)
+        // Gain: 64 (0dB), Q: 115 (~1.0), Freqs: Standard bands
+        const neutralSettings = [
             { band: 'low', q: 115, f: 23, g: 64 },
             { band: 'lmid', q: 115, f: 46, g: 64 },
             { band: 'hmid', q: 115, f: 79, g: 64 },
             { band: 'high', q: 115, f: 114, g: 64 }
         ];
 
-        console.log(`🧹 Resetting EQ for Channel ${channel}...`);
+        console.log(`🧹 Setting NEUTRAL EQ for Channel ${channel}...`);
 
-        settings.forEach(s => {
-            this.setEQ(channel, s.band, 'q', s.q);
-            this.setEQ(channel, s.band, 'freq', s.f);
-            this.setEQ(channel, s.band, 'gain', s.g);
-        });
+        (async () => {
+            for (const s of neutralSettings) {
+                this.setEQ(channel, s.band, 'q', s.q, true);
+                await new Promise(r => setTimeout(r, 40));
+                this.setEQ(channel, s.band, 'freq', s.f, true);
+                await new Promise(r => setTimeout(r, 40));
+                this.setEQ(channel, s.band, 'gain', s.g, true);
+                await new Promise(r => setTimeout(r, 40));
+            }
+            // Push final state update after all changes
+            if (this.onStateChange) this.onStateChange(this.state);
+        })();
     }
 
-    recallEQ(channel, presetIdx) {
+    recallEQ(channel, pIdx, skipMidi = false) {
         if (!this.connected) return;
-        // Delegate to eqPresets module
-        this.eqPresets.recallEQ(channel, presetIdx);
+
+        const presetIdx = parseInt(pIdx);
+        const hasCache = !!this.state.eqLibrary[presetIdx];
+
+        // 1. Instant UI update from DB if available (Smart Cache)
+        if (hasCache) {
+            const presetBody = this.state.eqLibrary[presetIdx];
+            const chIdx = channel - 1;
+            const ch = this.state.channels[chIdx];
+            if (ch) {
+                ch.eqType = presetBody.type;
+                ch.att = presetBody.att;
+                ch.eq = JSON.parse(JSON.stringify(presetBody.eq));
+                console.log(`[DB] Instant UI recall applied for Preset #${presetIdx}`);
+            }
+        }
+
+        // 2. Tell the mixer to switch (Always needed for audio)
+        if (!skipMidi) {
+            this.eqPresets.recallEQ(channel, presetIdx);
+        }
+
+        // 3. Request Logic (The "Spam Filter")
+        // If we have it in Cache, we updated the UI in step 1 and the mixer is switching.
+        // We skip verification to enable "Zero-Latency" switching for BOTH Factory and User presets.
+        if (hasCache) {
+            console.log(`[DB] Preset #${presetIdx} is cached - skipping verification sync.`);
+            if (this.onStateChange) this.onStateChange(this.state);
+            return;
+        }
+
+        // 4. Verification Sync (Only for unknown presets)
+        console.log(`[DB] Unknown Preset #${presetIdx} - Triggering discovery sync...`);
+        if (this.onSyncStatus) this.onSyncStatus('start-eq');
+
+        // Give the mixer enough time to load the preset into its DSP (600ms is usually safe)
+        setTimeout(async () => {
+            console.log(`[SYNC] Fetching parameters for Preset #${presetIdx} on Ch ${channel}`);
+            await this.syncEQForChannel(channel);
+
+            // Save new discovery to DB
+            const chIdx = channel - 1;
+            const ch = this.state.channels[chIdx];
+            if (ch) {
+                const presetData = {
+                    id: presetIdx,
+                    name: this.state.eqPresets[presetIdx] || `PRESET ${presetIdx}`,
+                    type: ch.eqType,
+                    att: ch.att,
+                    eq: JSON.parse(JSON.stringify(ch.eq))
+                };
+                await db.savePreset(presetData);
+                this.state.eqLibrary[presetIdx] = presetData;
+                console.log(`[DB] Learned and cached Preset #${presetIdx} to library.`);
+            }
+            if (this.onStateChange) this.onStateChange(this.state);
+            if (this.onSyncStatus) this.onSyncStatus('end-eq');
+        }, 800);
     }
 
-    saveEQ(channel, presetIdx, name = '') {
+    async syncEQForChannel(channel) {
         if (!this.connected) return;
-        // Delegate to eqPresets module
+        const chIdx = channel - 1;
+        console.log(`[SYNC] Requesting EQ Parameters for Channel ${channel}...`);
+
+        const eqElements = [
+            { id: 0x20, p1: 0x00 }, // EQ Type
+            { id: 0x20, p1: 0x0F }, // EQ Toggle
+            { id: 0x1D, p1: 0x00 }, // Attenuation
+        ];
+        // 12 EQ Params (Q, Freq, Gain x 4 bands)
+        for (let p = 1; p <= 13; p++) {
+            eqElements.push({ id: 0x20, p1: p });
+        }
+
+        for (const el of eqElements) {
+            const msg = [0xF0, 0x43, 0x30, 0x3E, 0x7F, 0x01, el.id, el.p1, chIdx, 0xF7];
+            this.output.sendMessage(msg);
+            await new Promise(r => setTimeout(r, 15)); // Fast sync for just one channel
+        }
+
+        console.log(`[SYNC] EQ for Channel ${channel} complete.`);
+        if (this.onSyncStatus) this.onSyncStatus('end-eq');
+    }
+
+    async saveEQ(channel, presetIdx, name) {
+        if (!this.connected) return;
+
+        // 1. Save to mixer
         this.eqPresets.saveEQ(channel, presetIdx, name);
+
+        // 2. Sync state locally
+        this.state.eqPresets[presetIdx] = name;
+
+        // 3. Save to DB (Full parameters of the source channel)
+        const ch = this.state.channels[channel - 1];
+        if (ch) {
+            const presetData = {
+                id: presetIdx,
+                name: name,
+                type: ch.eqType,
+                att: ch.att,
+                eq: JSON.parse(JSON.stringify(ch.eq))
+            };
+            await db.savePreset(presetData);
+            this.state.eqLibrary[presetIdx] = presetData;
+            console.log(`[DB] Saved user preset #${presetIdx} "${name}" to library.`);
+        }
+
+        if (this.onStateChange) this.onStateChange(this.state);
     }
 
     async deepSync() {
@@ -695,34 +869,47 @@ class Yamaha01V96Controller {
     async scanPresets() {
         if (!this.connected) return;
         console.log('========================================');
-        console.log('[SCAN] Starting Preset Scan (1-128)...');
-        console.log('[SCAN] Loading presets on Channel 32');
+        console.log('[SCAN] Starting Full Library Sync to DB...');
+        console.log('[SCAN] This will capture all EQ parameters for 128 presets.');
         console.log('========================================');
 
-        const SCAN_CHANNEL = 32;
-        let foundCount = 0;
+        const SCAN_CHANNEL = 32; // Use CH32 as scratchpad
+        let count = 0;
 
         for (let presetId = 1; presetId <= 128; presetId++) {
-            const before = Object.keys(this.state.eqPresets || {}).length;
+            console.log(`[SCAN] Processing Preset #${presetId}/128...`);
 
-            // Load preset on channel 32
-            const msg = [0xF0, 0x43, 0x10, 0x3E, 0x7F, 0x10, 0x01, 0x00, presetId & 0x7F, 0x00, 0x00, 0xF7];
-            this.output.sendMessage(msg);
+            // 1. Recall on CH32
+            this.eqPresets.recallEQ(SCAN_CHANNEL, presetId);
 
-            // Wait for mixer response
-            await new Promise(r => setTimeout(r, 200));
+            // 2. Wait for Recall (Mixer delay)
+            await new Promise(r => setTimeout(r, 600));
 
-            const after = Object.keys(this.state.eqPresets || {}).length;
-            if (after > before) {
-                foundCount++;
-                console.log(`[SCAN] ${presetId}/128 - FOUND: "${this.state.eqPresets[presetId]}" (Total: ${foundCount})`);
-            } else if (presetId % 10 === 0) {
-                console.log(`[SCAN] Progress: ${presetId}/128 (Found: ${foundCount})`);
+            // 3. Sync EQ for this channel
+            await this.syncEQForChannel(SCAN_CHANNEL);
+
+            // 4. Extract data and save to DB
+            const ch = this.state.channels[SCAN_CHANNEL - 1];
+            if (ch) {
+                const name = this.state.eqPresets[presetId] || `PRESET ${presetId}`;
+                const presetData = {
+                    id: presetId,
+                    name: name,
+                    type: ch.eqType,
+                    att: ch.att,
+                    eq: ch.eq
+                };
+                await db.savePreset(presetData);
+                this.state.eqLibrary[presetId] = presetData;
+                count++;
             }
+
+            // Small breather
+            await new Promise(r => setTimeout(r, 50));
         }
 
         console.log('========================================');
-        console.log(`[SCAN] Complete! Found ${foundCount} named presets.`);
+        console.log(`[SCAN] Complete! Saved ${count} presets to SQLite DB.`);
         console.log('========================================');
     }
 

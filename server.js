@@ -28,7 +28,10 @@ yamaha.onRawMidi = (msg, isOutgoing) => {
 };
 
 if (yamaha.connect()) {
-    console.log('✓ Yamaha Controller Active (with EQ)');
+    console.log('-------------------------------------------');
+    console.log('🚀 YAMAHA 01V96 PRO TOUCH ENGINE v1.1stable');
+    console.log('✓ Yamaha Controller Active (with Smart Cache)');
+    console.log('-------------------------------------------');
 }
 
 const wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
@@ -55,7 +58,9 @@ wss.on('connection', (ws) => {
             else if (data.type === 'setMeterInterval') yamaha.setMeterInterval(data.value, data.range);
             else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
             else if (data.type === 'scanPresets') yamaha.scanPresets();
-            else if (data.type === 'saveEQ') yamaha.saveEQ(data.channel, data.preset);
+            else if (data.type === 'saveEQ') yamaha.saveEQ(data.channel, data.preset, data.name);
+            else if (data.type === 'setMeterOffset') yamaha.setMeterOffset(data.value);
+            else if (data.type === 'setUIOption') yamaha.setUIOption(data.key, data.value);
             else if (data.type === 'getChangelog') {
                 fs.readFile(path.join(__dirname, 'changelog.md'), 'utf8', (err, log) => {
                     if (err) ws.send(JSON.stringify({ type: 'changelog', data: 'Changelog not found.' }));

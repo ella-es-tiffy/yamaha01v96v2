@@ -15,7 +15,8 @@ class YamahaTouchRemote {
         this.debugUI = false; // Toggle for hex values/addresses
         this.meterOffset = 0; // Noise gate for meters
         this.meterBankOnly = false; // ECO Mode: Only visible 8 ch
-        this.autoCloseSafety = true; // Auto-close EQ lock cover
+        this.autoCloseSafety = false; // Auto-close EQ lock cover
+        this.currentPresetIdx = 0; // Track current preset (0-indexed)
 
         this.state = {
             channels: Array(36).fill(null).map((_, i) => ({
@@ -50,6 +51,117 @@ class YamahaTouchRemote {
             if (e.touches.length > 1 && e.target.closest('.mixer-viewport')) e.preventDefault();
         }, { passive: false });
         document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+    }
+
+    // ===== CUSTOM MODAL HELPER FUNCTIONS v1.0 =====
+
+    showNotification(message, type = 'error', duration = 3000) {
+        const notif = document.getElementById('custom-notification');
+        notif.textContent = message;
+        notif.className = `custom-notification ${type}`;
+        notif.classList.add('active');
+        setTimeout(() => notif.classList.remove('active'), duration);
+    }
+
+    async showConfirm(title, message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            const titleEl = document.getElementById('modal-title');
+            const messageEl = document.getElementById('modal-message');
+            const inputEl = document.getElementById('modal-input');
+            const okBtn = document.getElementById('modal-ok');
+            const cancelBtn = document.getElementById('modal-cancel');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            inputEl.style.display = 'none';
+            modal.classList.add('active');
+            okBtn.focus();
+
+            const cleanup = () => {
+                modal.classList.remove('active');
+                okBtn.replaceWith(okBtn.cloneNode(true));
+                cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            };
+
+            setTimeout(() => {
+                const newOkBtn = document.getElementById('modal-ok');
+                const newCancelBtn = document.getElementById('modal-cancel');
+
+                newOkBtn.addEventListener('click', () => {
+                    cleanup();
+                    resolve(true);
+                });
+
+                newCancelBtn.addEventListener('click', () => {
+                    cleanup();
+                    resolve(false);
+                });
+            }, 10);
+        });
+    }
+
+    async showPrompt(title, message, defaultValue = '') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            const titleEl = document.getElementById('modal-title');
+            const messageEl = document.getElementById('modal-message');
+            const inputEl = document.getElementById('modal-input');
+            const okBtn = document.getElementById('modal-ok');
+            const cancelBtn = document.getElementById('modal-cancel');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            inputEl.style.display = 'block';
+            inputEl.value = defaultValue;
+            modal.classList.add('active');
+            inputEl.focus();
+            inputEl.select();
+
+            const cleanup = () => {
+                modal.classList.remove('active');
+                okBtn.replaceWith(okBtn.cloneNode(true));
+                cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            };
+
+            setTimeout(() => {
+                const newOkBtn = document.getElementById('modal-ok');
+                const newCancelBtn = document.getElementById('modal-cancel');
+
+                const submitValue = () => {
+                    const value = inputEl.value.trim();
+                    cleanup();
+                    resolve(value || null);
+                };
+
+                newOkBtn.addEventListener('click', submitValue);
+                newCancelBtn.addEventListener('click', () => {
+                    cleanup();
+                    resolve(null);
+                });
+
+                inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') submitValue();
+                    else if (e.key === 'Escape') {
+                        cleanup();
+                        resolve(null);
+                    }
+                });
+            }, 10);
+        });
+    }
+
+    updatePresetDisplay() {
+        const presetLabel = document.getElementById('val-eq-preset');
+        if (!presetLabel) return;
+
+        const uiNumber = this.currentPresetIdx + 1;
+        const name = (this.state.eqPresets && this.state.eqPresets[uiNumber]) || '-- EMPTY --';
+
+        presetLabel.innerHTML = `
+            <span style="font-size: 0.5rem; color: var(--accent); margin-right: 5px; font-weight: bold;">${uiNumber.toString().padStart(3, '0')}</span>
+            <span style="font-size: 0.6rem;">${name.toUpperCase()}</span>
+        `;
     }
 
     injectGradients() {
@@ -147,17 +259,19 @@ class YamahaTouchRemote {
 
         const innerGrid = document.createElement('div');
         innerGrid.style.display = 'grid';
-        innerGrid.style.gridTemplateColumns = '100px 100px 100px 1fr';
-        innerGrid.style.gap = '20px';
-        innerGrid.style.alignItems = 'center';
-        innerGrid.style.padding = '10px';
+        innerGrid.style.gridTemplateColumns = '80px 100px 180px';
+        innerGrid.style.gap = '10px';
+        innerGrid.style.alignItems = 'start';
+        innerGrid.style.justifyContent = 'start';
+        innerGrid.style.padding = '8px 12px';
 
         innerGrid.innerHTML = `
-            <div class="knob-container" style="flex-direction: row; gap: 10px; align-items: center; padding-top: 30px;">
-                <div class="row-label" style="font-size: 0.6rem; color: #666;">ATT</div>
+            <!-- ATTENUATION -->
+            <div class="knob-container" style="flex-direction: row; gap: 8px; align-items: center; padding-top: 25px;">
+                <div class="row-label" style="font-size: 0.55rem; color: #555;">ATT</div>
                 <div style="position: relative;">
-                    <div class="value-display" id="val-enc-att" style="position: absolute; top: -15px; width: 60px; text-align: center; left: 50%; transform: translateX(-50%); font-size: 0.5rem; color: var(--accent);">--</div>
-                    <svg class="knob-svg" id="enc-att" viewBox="0 0 60 60" style="width: 70px; height: 70px;">
+                    <div class="value-display" id="val-enc-att" style="position: absolute; top: -12px; width: 50px; text-align: center; left: 50%; transform: translateX(-50%); font-size: 0.45rem; color: var(--accent);">--</div>
+                    <svg class="knob-svg" id="enc-att" viewBox="0 0 60 60" style="width: 55px; height: 55px;">
                         <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
                         <path id="ring-enc-att" d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-active" stroke-linecap="round" stroke-dasharray="120" stroke-dashoffset="120" />
                         <circle cx="30" cy="30" r="20" class="knob-circle"></circle>
@@ -165,37 +279,28 @@ class YamahaTouchRemote {
                     </svg>
                 </div>
             </div>
-            <div style="display: flex; gap: 5px; flex-direction: column; align-items: center;">
-                <div style="display: flex; align-items: center; width: 100%; gap: 8px; margin-bottom: 2px;">
-                    <div style="flex: 1; height: 1px; background: #444; position: relative;">
-                        <div style="position: absolute; left: 0; top: 0; width: 1px; height: 4px; background: #444;"></div>
-                    </div>
-                    <span class="eq-label" style="font-size: 0.6rem; color: #777; letter-spacing: 1px; font-weight: bold; white-space: nowrap;">TYPE</span>
-                    <div style="flex: 1; height: 1px; background: #444; position: relative;">
-                        <div style="position: absolute; right: 0; top: 0; width: 1px; height: 4px; background: #444;"></div>
-                    </div>
+
+            <!-- EQ TYPE / RESET -->
+            <div style="display: flex; gap: 4px; flex-direction: column; align-items: center; border-left: 1px solid #222; padding-left: 10px;">
+                <span class="eq-label" style="font-size: 0.45rem; color: #555; font-weight: bold; text-align: center;">TYPE</span>
+                <div style="display: flex; gap: 2px; width: 100%;">
+                    <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px 0; background: #1a1a1a; border: 1px solid #333; color: #555; border-radius: 2px; cursor: pointer;">I</button>
+                    <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px 0; background: #1a1a1a; border: 1px solid #333; color: #555; border-radius: 2px; cursor: pointer;">II</button>
                 </div>
-                <div style="display: flex; gap: 4px;">
-                    <button class="eq-type-btn" id="btn-eq-type1" data-type="0" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 1</button>
-                    <button class="eq-type-btn" id="btn-eq-type2" data-type="1" style="flex:1; font-size: 0.5rem; padding: 4px; background: #222; border: 1px solid #333; color: #666; border-radius: 2px; cursor: pointer;">TYPE 2</button>
-                </div>
-                <button id="btn-eq-reset" style="margin-top: 4px; font-size: 0.5rem; padding: 4px; background: #330000; border: 1px solid #500; color: #f88; border-radius: 2px; cursor: pointer; font-weight: bold;">RESET</button>
+                <button id="btn-eq-reset" style="width: 100%; font-size: 0.5rem; height: 26px; background: #cc88aa; border: 1px solid #aa6688; color: #000; border-radius: 2px; cursor: pointer; font-weight: 900; margin-top: 5px; text-transform: uppercase;">SET NEUTRAL</button>
             </div>
 
-            <div style="display: flex; gap: 5px; flex-direction: column; align-items: center;">
-                <div style="display: flex; align-items: center; width: 100%; gap: 8px; margin-bottom: 2px;">
-                    <div style="flex: 1; height: 1px; background: #444; position: relative;"><div style="position: absolute; left: 0; top: 0; width: 1px; height: 4px; background: #444;"></div></div>
-                    <span class="eq-label" style="font-size: 0.6rem; color: #777; letter-spacing: 1px; font-weight: bold; white-space: nowrap;">PRESET</span>
-                    <div style="flex: 1; height: 1px; background: #444; position: relative;"><div style="position: absolute; right: 0; top: 0; width: 1px; height: 4px; background: #444;"></div></div>
+            <!-- PRESET NAVIGATION -->
+            <div style="display: flex; gap: 2px; flex-direction: column; align-items: center; border-left: 1px solid #222; padding-left: 10px;">
+                <span class="eq-label" style="font-size: 0.55rem; color: #666; letter-spacing: 1px; font-weight: bold; text-transform: uppercase;">LIBRARY</span>
+                <div class="value-display" id="val-eq-preset" style="width: 100%; height: 22px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--accent); border-radius: 3px; box-shadow: inset 0 0 10px rgba(0,210,255,0.1); font-family: monospace; font-weight: bold; cursor: pointer; padding: 0 5px; overflow: hidden; white-space: nowrap;">
+                    -- LOAD --
                 </div>
-                <div class="value-display" id="val-eq-preset" style="width: 100%; height: 24px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--accent); border-radius: 3px; box-shadow: inset 0 0 10px rgba(0,210,255,0.2); font-family: monospace; font-weight: bold;">042</div>
-                <div style="display: flex; gap: 4px; width: 100%; margin-top: 2px;">
-                    <button class="lib-btn" id="btn-lib-prev" style="flex:1; font-size: 0.6rem; padding: 2px; background: #222; border: 1px solid #333; color: #777; border-radius: 2px; cursor: pointer;">◀</button>
-                    <button class="lib-btn" id="btn-lib-next" style="flex:1; font-size: 0.6rem; padding: 2px; background: #222; border: 1px solid #333; color: #777; border-radius: 2px; cursor: pointer;">▶</button>
+                <div style="display: flex; gap: 4px; width: 100%; margin-top: 4px;">
+                    <button class="lib-btn" id="btn-lib-prev" style="flex: 1; height: 32px; font-size: 1rem; background: #1a1a1a; border: 1px solid #333; color: var(--accent); border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center;">◀</button>
+                    <button class="lib-btn" id="btn-lib-next" style="flex: 1; height: 32px; font-size: 1rem; background: #1a1a1a; border: 1px solid #333; color: var(--accent); border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center;">▶</button>
                 </div>
-                <button id="btn-lib-save" style="width: 100%; margin-top: 4px; font-size: 0.5rem; padding: 4px; background: #004400; border: 1px solid #006600; color: #8f8; border-radius: 2px; cursor: pointer; font-weight: bold;">SAVE</button>
             </div>
-            <div></div>
         `;
 
         // Safety Cover
@@ -243,20 +348,7 @@ class YamahaTouchRemote {
 
         // --- PRESET HANDLERS ---
         const presetLabel = innerGrid.querySelector('#val-eq-preset');
-        this.currentPresetIdx = 0; // Track current preset (0-indexed)
 
-        this.updatePresetDisplay = () => {
-            const uiNumber = this.currentPresetIdx + 1;
-            const name = (this.state.eqPresets && this.state.eqPresets[uiNumber]) || '-- EMPTY --';
-            if (presetLabel) {
-                presetLabel.innerHTML = `
-                    <span style="font-size: 0.5rem; color: var(--accent); margin-right: 5px; font-weight: bold;">${uiNumber.toString().padStart(3, '0')}</span>
-                    <span style="font-size: 0.6rem;">${name.toUpperCase()}</span>
-                `;
-            }
-        };
-
-        this.updatePresetDisplay();
 
         presetLabel?.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -285,16 +377,12 @@ class YamahaTouchRemote {
             }
         });
 
-        innerGrid.querySelector('#btn-lib-save')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const presetId = this.currentPresetIdx + 1;
-            console.log(`[UI] Saving current EQ to Preset ${presetId}...`);
-            this.send('saveEQ', { channel: this.selectedChannel, preset: presetId });
-        });
-
         globalRow.appendChild(innerGrid);
         globalRow.appendChild(cover);
         eqArea.appendChild(globalRow);
+
+        // Update display now that elements are in DOM
+        this.updatePresetDisplay();
 
         grid.innerHTML = '';
         const bands = ['low', 'lmid', 'hmid', 'high'];
@@ -493,6 +581,11 @@ class YamahaTouchRemote {
         });
 
         // Developer Settings Handlers
+        document.getElementById('meter-offset-slider')?.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value);
+            this.send('setMeterOffset', { value: val });
+        });
+
         document.getElementById('meter-offset-slider')?.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
             this.meterOffset = val;
@@ -520,11 +613,13 @@ class YamahaTouchRemote {
 
         document.getElementById('dbg-bank-meters')?.addEventListener('change', (e) => {
             this.meterBankOnly = e.target.checked;
+            this.send('setUIOption', { key: 'bankOnlyMetering', value: e.target.checked });
             this.triggerMeterSync();
         });
 
         document.getElementById('chk-auto-close-safety')?.addEventListener('change', (e) => {
             this.autoCloseSafety = e.target.checked;
+            this.send('setUIOption', { key: 'autoCloseSafety', value: e.target.checked });
         });
 
         document.getElementById('copy-debug')?.addEventListener('click', () => {
@@ -602,14 +697,9 @@ class YamahaTouchRemote {
                 if (ch) ch.eqType = type;
                 this.syncEQToSelected();
             } else if (e.target.id === 'btn-eq-reset') {
-                if (confirm('Reset EQ for this channel?')) {
-                    this.send('resetEQ', { channel: this.selectedChannel });
-                    // After a short delay, request update or rely on incoming parameter changes
-                    // For now, we rely on the mixer sending back the new values, 
-                    // OR we could optimistically set them, but Reset affects 12 params.
-                    // A quick "Deep Sync" for one channel would be ideal, but for now 
-                    // the backend sends the individual params so the UI should update via WebSocket!
-                }
+                this.send('resetEQ', { channel: this.selectedChannel });
+            } else if (e.target.id === 'val-eq-preset') {
+                this.openPresetBrowser();
             }
         });
         // Global UI Lock Logic
@@ -656,68 +746,90 @@ class YamahaTouchRemote {
     openPresetBrowser() {
         const overlay = document.getElementById('preset-browser-overlay');
         const list = document.getElementById('preset-list');
+        const searchInput = document.getElementById('preset-search');
         const closeBtn = document.getElementById('close-preset-modal');
         const previewId = document.getElementById('preview-preset-id');
         const previewName = document.getElementById('preview-preset-name');
         const recallBtn = document.getElementById('btn-recall-selection');
 
         let selectedPresetId = null;
-
-        // Initialize as empty list, only filling from received bulk data
-        const allPresets = [];
-        const MAX_SLOTS = 127;
-
-        for (let i = 1; i <= MAX_SLOTS; i++) {
-            if (this.state.eqPresets && this.state.eqPresets[i]) {
-                allPresets.push({ id: i, name: this.state.eqPresets[i] });
-            }
-        }
+        const MAX_SLOTS = 128;
 
         if (closeBtn) closeBtn.onclick = () => overlay.classList.remove('active');
 
-        // Reset Selection state
-        if (previewId) previewId.innerText = '000';
-        if (previewName) previewName.innerText = '-- SELECT PRESET --';
-        if (recallBtn) {
-            recallBtn.disabled = true;
-            recallBtn.onclick = () => {
-                if (selectedPresetId !== null) {
-                    this.send('recallEQ', { channel: this.selectedChannel, preset: selectedPresetId });
+        const renderList = (filter = '') => {
+            list.innerHTML = '';
+            const query = filter.toLowerCase().trim();
+
+            for (let i = 1; i <= MAX_SLOTS; i++) {
+                const name = (this.state.eqPresets && this.state.eqPresets[i]) || '';
+                const idStr = i.toString().padStart(3, '0');
+
+                // Smart Filter
+                if (query && !name.toLowerCase().includes(query) && !idStr.includes(query)) continue;
+
+                const item = document.createElement('div');
+                item.className = `preset-item ${name ? 'filled' : ''}`;
+                item.style.position = 'relative';
+                if (i === (this.currentPresetIdx + 1)) item.classList.add('current');
+
+                item.innerHTML = `
+                    <span class="id">${idStr}</span>
+                    <span class="name">${name ? name.toUpperCase() : '-- EMPTY --'}</span>
+                    ${i > 40 ? `
+                        <button class="item-store-btn" data-id="${i}" style="margin-left: auto; background: #003300; border: 1px solid #005500; color: #8f8; font-size: 0.5rem; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-weight: bold;">STORE TO #${i}</button>
+                    ` : '<span style="font-size:0.4rem; color:#666; margin-left:auto;">FACTORY</span>'}
+                `;
+
+                // Item Click = RECALL
+                item.addEventListener('click', (e) => {
+                    // Don't trigger recall if the store button was clicked
+                    if (e.target.classList.contains('item-store-btn')) return;
+
+                    this.currentPresetIdx = i - 1;
+                    this.send('recallEQ', { channel: this.selectedChannel, preset: i });
+                    this.updatePresetDisplay();
                     overlay.classList.remove('active');
+                });
+
+                // Button Click = STORE
+                const storeBtn = item.querySelector('.item-store-btn');
+                if (storeBtn) {
+                    storeBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+
+                        // Close browser first (as requested)
+                        overlay.classList.remove('active');
+
+                        const defaultName = name || `USER ${i}`;
+                        const newName = await this.showPrompt(
+                            `Preset ${i} speichern`,
+                            'Preset-Name (max. 16 Zeichen):',
+                            defaultName
+                        );
+
+                        if (newName !== null) {
+                            const trimmedName = newName.substring(0, 16);
+                            this.send('saveEQ', { channel: this.selectedChannel, preset: i, name: trimmedName });
+                            this.showNotification(`Preset ${i} gespeichert: "${trimmedName}"`, 'success');
+                        }
+                    });
                 }
-            };
+
+                list.appendChild(item);
+            }
+        };
+
+        // Search Handler
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.oninput = (e) => renderList(e.target.value);
         }
 
-        list.innerHTML = '';
-        // Render slots
-        for (let i = 1; i <= MAX_SLOTS; i++) {
-            const known = allPresets.find(p => p.id === i);
-            const item = document.createElement('div');
-            item.className = `preset-item ${known ? 'filled' : ''}`;
-            item.innerHTML = `
-                <span class="id">${i.toString().padStart(3, '0')}</span>
-                <span class="name">${known ? known.name.toUpperCase() : '-- EMPTY --'}</span>
-            `;
-            item.addEventListener('click', () => {
-                // DESELECT ALL
-                list.querySelectorAll('.preset-item').forEach(el => el.classList.remove('selected'));
-                // SELECT THIS
-                item.classList.add('selected');
-                selectedPresetId = i;
 
-                // UPDATE PREVIEW
-                if (previewId) previewId.innerText = i.toString().padStart(3, '0');
-                if (previewName) previewName.innerText = known ? known.name.toUpperCase() : '-- EMPTY --';
-
-                // ENABLE BUTTON
-                if (recallBtn) {
-                    recallBtn.disabled = false;
-                }
-            });
-            list.appendChild(item);
-        }
-
+        renderList();
         overlay.classList.add('active');
+        if (searchInput) setTimeout(() => searchInput.focus(), 100);
     }
 
     updateKnobAddresses() {
@@ -982,9 +1094,37 @@ class YamahaTouchRemote {
                 // Merge state selectively to preserve local fader values during drag
                 const newState = data.data;
 
+                // Sync UI Settings from Backend DB
+                if (newState.settings) {
+                    this.meterOffset = newState.settings.meterOffset;
+                    this.autoCloseSafety = newState.settings.autoCloseSafety;
+                    this.meterBankOnly = newState.settings.bankOnlyMetering;
+
+                    // Update Sliders/Checkboxes if they exist
+                    const offsetSlider = document.getElementById('meter-offset-slider');
+                    if (offsetSlider) {
+                        offsetSlider.value = this.meterOffset;
+                        document.getElementById('meter-offset-val').innerText = this.meterOffset;
+                    }
+
+                    const rateSlider = document.getElementById('meter-rate-slider');
+                    if (rateSlider) {
+                        const seconds = newState.settings.meterInterval / 1000;
+                        rateSlider.value = seconds;
+                        document.getElementById('meter-rate-val').innerText = seconds + 's';
+                    }
+
+                    const bankMetersChk = document.getElementById('dbg-bank-meters');
+                    if (bankMetersChk) bankMetersChk.checked = this.meterBankOnly;
+
+                    const autoCloseChk = document.getElementById('chk-auto-close-safety');
+                    if (autoCloseChk) autoCloseChk.checked = this.autoCloseSafety;
+                }
+
                 // Handle Dynamic EQ Presets Update
                 if (newState.eqPresets) {
                     this.state.eqPresets = newState.eqPresets;
+                    this.updatePresetDisplay();
                     const Overlay = document.getElementById('preset-browser-overlay');
                     if (Overlay?.classList.contains('active')) {
                         this.openPresetBrowser(); // Re-render list live
@@ -1063,6 +1203,18 @@ class YamahaTouchRemote {
                         btn.style.opacity = '1';
                         btn.style.cursor = 'pointer';
                         btn.style.background = '';
+                    } else if (data.status === 'start-eq') {
+                        const presetLabel = document.getElementById('val-eq-preset');
+                        if (presetLabel) {
+                            presetLabel.style.background = '#331100';
+                            presetLabel.innerHTML = '<span style="color:#ff8800; font-size:0.6rem; letter-spacing:2px; animation: pulse 1s infinite;">LOADING...</span>';
+                        }
+                    } else if (data.status === 'end-eq') {
+                        const presetLabel = document.getElementById('val-eq-preset');
+                        if (presetLabel) {
+                            presetLabel.style.background = '#000';
+                            this.updatePresetDisplay();
+                        }
                     }
                 }
             } else if (data.type === 'changelog') {

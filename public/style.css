@@ -866,7 +866,22 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 .preset-item.filled .name {
-    color: #fff;
+    color: var(--accent);
+}
+
+.preset-item.selected {
+    background: rgba(0, 210, 255, 0.2);
+    border-left: 3px solid var(--accent);
+}
+
+.preset-item.current {
+    background: rgba(255, 140, 0, 0.1);
+    border-right: 3px solid #ff8c00;
+}
+
+
+.preset-item.current .name {
+    color: #ff8c00;
 }
 
 .close-modal {

@@ -1,0 +1,206 @@
+/* ===== CUSTOM MODAL SYSTEM v1.0 ===== */
+
+/* Modal Overlay Base */
+.custom-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease;
+}
+
+.custom-modal-overlay.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Modal Dialog */
+.custom-modal-dialog {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 25px;
+    min-width: 400px;
+    max-width: 600px;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.9),
+        0 0 20px rgba(var(--accent-rgb), 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px) scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.custom-modal-dialog h3 {
+    color: var(--accent);
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.5);
+}
+
+.custom-modal-dialog p {
+    color: #ccc;
+    margin: 0 0 20px 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.custom-modal-dialog input {
+    width: 100%;
+    padding: 12px;
+    background: #000;
+    border: 1px solid #444;
+    color: #fff;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+}
+
+.custom-modal-dialog input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow:
+        0 0 0 2px rgba(var(--accent-rgb), 0.2),
+        inset 0 0 20px rgba(var(--accent-rgb), 0.1);
+}
+
+/* Modal Buttons */
+.custom-modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.custom-modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 900;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.custom-modal-buttons button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+}
+
+.custom-modal-buttons button:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.custom-modal-buttons .btn-ok {
+    background: linear-gradient(135deg, #006600 0%, #004400 100%);
+    color: #8f8;
+    border: 1px solid #00aa00;
+    box-shadow: 0 4px 12px rgba(0, 100, 0, 0.4);
+}
+
+.custom-modal-buttons .btn-ok:hover {
+    background: linear-gradient(135deg, #008800 0%, #006600 100%);
+    box-shadow: 0 6px 16px rgba(0, 150, 0, 0.6);
+    transform: translateY(-1px);
+}
+
+.custom-modal-buttons .btn-cancel {
+    background: linear-gradient(135deg, #660000 0%, #440000 100%);
+    color: #f88;
+    border: 1px solid #aa0000;
+    box-shadow: 0 4px 12px rgba(100, 0, 0, 0.4);
+}
+
+.custom-modal-buttons .btn-cancel:hover {
+    background: linear-gradient(135deg, #880000 0%, #660000 100%);
+    box-shadow: 0 6px 16px rgba(150, 0, 0, 0.6);
+    transform: translateY(-1px);
+}
+
+/* Notification Toast */
+.custom-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: linear-gradient(135deg, #440000 0%, #220000 100%);
+    border: 2px solid #ff3333;
+    color: #fff;
+    padding: 16px 24px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    z-index: 10001;
+    opacity: 0;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(255, 50, 50, 0.5);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.custom-notification.active {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.custom-notification.success {
+    background: linear-gradient(135deg, #004400 0%, #002200 100%);
+    border-color: #33ff33;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(50, 255, 50, 0.5);
+}
+
+.custom-notification.info {
+    background: linear-gradient(135deg, #003366 0%, #001a33 100%);
+    border-color: var(--accent);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(var(--accent-rgb), 0.5);
+}
