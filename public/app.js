@@ -1154,13 +1154,16 @@ class YamahaTouchRemote {
                     if (autoCloseChk) autoCloseChk.checked = this.autoCloseSafety;
 
                     // SYNC UI LOCK STATE (from State Broadcast)
-                    const lockOverlay = document.getElementById('global-lock-overlay');
-                    if (lockOverlay) {
-                        const isLocked = !!newState.settings.uiLocked;
-                        console.log('📡 Syncing UI Lock from State:', isLocked);
-                        lockOverlay.classList.toggle('active', isLocked);
-                        document.body.classList.toggle('mode-lock-active', isLocked);
+                    if (document.getElementById('global-lock-overlay')) {
+                        this.toggleLockUI(!!newState.settings.uiLocked);
                     }
+                }
+
+                // EQ PRESETS DEBUG & SYNC
+                if (newState.eqPresets) {
+                    console.log('📚 EQ Presets Received:', Object.keys(newState.eqPresets).length);
+                    this.state.eqPresets = newState.eqPresets;
+                    this.updatePresetDisplay();
                 }
             } else if (data.type === 'setUILock') {
                 // Direct specific broadcast for speed
