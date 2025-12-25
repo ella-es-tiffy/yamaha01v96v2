@@ -82,6 +82,10 @@ class Yamaha01V96Controller {
                 // Automatically apply loaded metering config
                 this.meterConfig.ms = this.state.settings.meterInterval;
             }
+
+            // SYNC MANAGER with loaded presets
+            this.eqPresets.setPresets({ ...this.state.eqPresets });
+
         } catch (e) {
             console.error('[DB] Error loading library/settings:', e);
         }
@@ -512,11 +516,17 @@ class Yamaha01V96Controller {
     }
 
     processEQNames(msg) {
-        // Delegate to eqPresets module
+        // Delegate to eqPresets module (updates module state)
         const result = this.eqPresets.processEQNames(msg);
+
         if (result) {
-            // Sync state from module to controller
-            this.state.eqPresets = this.eqPresets.getPresets();
+            // MERGE into controller state instead of replacing
+            if (!this.state.eqPresets) this.state.eqPresets = {};
+            this.state.eqPresets[result.id] = result.name;
+
+            // Also update the manager with the full list effectively (sync back)
+            this.eqPresets.setPresets(this.state.eqPresets);
+
             this.emitEQPresets();
         }
     }

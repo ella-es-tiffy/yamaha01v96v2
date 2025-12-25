@@ -1154,8 +1154,12 @@ class YamahaTouchRemote {
                     if (autoCloseChk) autoCloseChk.checked = this.autoCloseSafety;
 
                     // SYNC UI LOCK STATE (from State Broadcast)
-                    if (document.getElementById('global-lock-overlay')) {
-                        this.toggleLockUI(!!newState.settings.uiLocked);
+                    const lockOverlay = document.getElementById('global-lock-overlay');
+                    if (lockOverlay) {
+                        const isLocked = !!newState.settings.uiLocked;
+                        console.log('📡 Syncing UI Lock from State:', isLocked);
+                        lockOverlay.classList.toggle('active', isLocked);
+                        document.body.classList.toggle('mode-lock-active', isLocked);
                     }
                 }
 
@@ -1164,21 +1168,7 @@ class YamahaTouchRemote {
                     console.log('📚 EQ Presets Received:', Object.keys(newState.eqPresets).length);
                     this.state.eqPresets = newState.eqPresets;
                     this.updatePresetDisplay();
-                }
-            } else if (data.type === 'setUILock') {
-                // Direct specific broadcast for speed
-                const isLocked = !!data.value;
-                console.log('📡 Syncing UI Lock from direct message:', isLocked);
-                const lockOverlay = document.getElementById('global-lock-overlay');
-                if (lockOverlay) {
-                    lockOverlay.classList.toggle('active', isLocked);
-                    document.body.classList.toggle('mode-lock-active', isLocked);
-                }
 
-                // Handle Dynamic EQ Presets Update
-                if (newState.eqPresets) {
-                    this.state.eqPresets = newState.eqPresets;
-                    this.updatePresetDisplay();
                     const Overlay = document.getElementById('preset-browser-overlay');
                     if (Overlay?.classList.contains('active')) {
                         this.openPresetBrowser(); // Re-render list live
@@ -1213,9 +1203,19 @@ class YamahaTouchRemote {
                 }
 
                 this.syncFaders();
-                this.syncFaders();
+                // Duplicate sync removed as it is redundant
                 this.syncEQToSelected();
                 this.syncStoredGains(); // Ensure backup gains are populated from new state
+
+            } else if (data.type === 'setUILock') {
+                // Direct specific broadcast for speed
+                const isLocked = !!data.value;
+                console.log('📡 Syncing UI Lock from direct message:', isLocked);
+                const lockOverlay = document.getElementById('global-lock-overlay');
+                if (lockOverlay) {
+                    lockOverlay.classList.toggle('active', isLocked);
+                    document.body.classList.toggle('mode-lock-active', isLocked);
+                }
             } else if (data.type === 'eq') {
                 // Handle individual EQ parameter updates
                 const d = data.data;

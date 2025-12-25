@@ -132,6 +132,9 @@ class YamahaServer {
 
         // COMPACT STATE FOR LEGACY DEVICES (Pro View)
         if (data.type === 'state') {
+            // Safety: If this is a partial update (e.g. eqPresets only), skip legacy translation
+            if (!data.data || !data.data.channels) return null;
+
             return {
                 t: 'state',
                 m: data.data.channels.map(ch => ch.mute ? 1 : 0),
