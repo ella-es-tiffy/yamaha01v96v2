@@ -126,7 +126,8 @@ class YamahaServer {
                 t: 'state',
                 m: data.data.channels.map(ch => ch.mute ? 1 : 0),
                 n: data.data.channels.map(ch => ch.name || ''),
-                f: data.data.channels.map(ch => ch.fader || 0)
+                f: data.data.channels.map(ch => ch.fader || 0),
+                s: data.data.settings || {}
             };
         }
 
@@ -139,6 +140,9 @@ class YamahaServer {
                 b: data.band,
                 pa: data.param
             };
+        }
+        if (data.type === 'setUIOption') {
+            return { t: 'setUIOption', k: data.key, v: data.value };
         }
         return null;
     }

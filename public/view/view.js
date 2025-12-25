@@ -14,6 +14,7 @@ class ProView {
         this.currentMidi = 64;
         this.activeKnob = false;
         this.isMuted = false;
+        this.settings = { meterOffset: 0 };
 
         this.init();
     }
@@ -58,6 +59,12 @@ class ProView {
                 const meterData = data.d || data.data;
                 this.updateMeters(meterData.channels || meterData);
             } else if (t === 'state') {
+                // Sync Settings (Meter Offset etc)
+                if (data.s) {
+                    this.settings = { ...this.settings, ...data.s };
+                    console.log('[VIEW] Settings synced:', this.settings);
+                }
+
                 // Handle Compact State for CH2 Test
                 if (data.m && data.m[1] !== undefined) {
                     this.isMuted = !!data.m[1];
@@ -89,14 +96,23 @@ class ProView {
                     this.currentMidi = v;
                     this.updateQueue.add('test-knob');
                 }
+            } else if (t === 'setUIOption') {
+                if (data.k === 'meterOffset') this.settings.meterOffset = data.v;
             }
         };
     }
 
     updateMeters(channels) {
+        const offset = this.settings.meterOffset || 0;
+
         // Update 16 meters
         for (let i = 1; i <= 16; i++) {
-            const val = channels[i - 1] || 0;
+            let val = channels[i - 1] || 0;
+
+            // Apply noise gate (mapping 0-100 offset to 0-32 meter range)
+            const gateThreshold = (offset / 100) * 32;
+            if (val < gateThreshold) val = 0;
+
             const elId = `meter-${i}`;
             if (!this.elCache[elId]) this.elCache[elId] = document.getElementById(elId);
             const el = this.elCache[elId];
