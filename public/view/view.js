@@ -109,6 +109,9 @@ ProView.prototype.setupNavigation = function () {
         }
         if (!btn) return;
 
+        // Fix: Do not treat LOCK button as a nav tab
+        if (btn.id === 'lock-ui-btn') return;
+
         // UI Update
         var allBtns = document.querySelectorAll('.nav-btn');
         for (var i = 0; i < allBtns.length; i++) {
