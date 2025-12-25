@@ -198,7 +198,6 @@ class YamahaTouchRemote {
                 <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
                 <div class="eq-button ${chState?.eqOn ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
-                <div class="fader-addr" style="${this.debugUI ? '' : 'display:none;'}">1C 00 ${(i - 1).toString(16).toUpperCase().padStart(2, '0')}</div>
                 <div class="pan-area">
                     <div class="value-display pan-val" id="val-pan-${i}">--</div>
                     <svg class="knob-svg pan-knob" id="pan-${i}" viewBox="0 0 60 60" data-ch="${i}">
@@ -403,7 +402,6 @@ class YamahaTouchRemote {
                 const cell = document.createElement('div');
                 cell.className = 'knob-container';
                 cell.innerHTML = `
-                    <div class="knob-addr" id="addr-${id}" style="${this.debugUI ? '' : 'display:none;'}">-- --</div>
                     <div class="value-display" id="val-${id}">--</div>
                     <svg class="knob-svg eq-knob" id="${id}" viewBox="0 0 60 60" data-band="${band}" data-param="${row.id}">
                         <path d="M 12 48 A 24 24 0 1 1 48 48" fill="none" class="ring-bg" stroke-linecap="round" />
@@ -568,12 +566,7 @@ class YamahaTouchRemote {
             e.target.style.background = this.debugUI ? 'var(--accent)' : '#333';
             e.target.style.color = this.debugUI ? '#000' : '#fff';
 
-            // Toggle all fader addresses
-            this.renderMixer();
-            this.renderEQ();
-
-            const masterAddr = document.getElementById('addr-master');
-            if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
+            e.target.style.color = this.debugUI ? '#000' : '#fff';
 
             const devPanel = document.getElementById('dev-panel');
             if (devPanel) devPanel.classList.toggle('active', this.debugUI);
@@ -866,26 +859,6 @@ class YamahaTouchRemote {
         const ch = this.selectedChannel;
         if (ch === 'master') return; // Master has no EQ
 
-        const isUpper = ch > 24;
-        const statusMap = { low: 0xB2, lmid: 0xB4, hmid: 0xB6, high: 0xB8 };
-        const baseCCMap = { gain: 0x21, freq: 0x40, q: 0x59 };
-
-        ['low', 'lmid', 'hmid', 'high'].forEach(band => {
-            ['q', 'freq', 'gain'].forEach(param => {
-                const id = `enc-${band}-${param}`;
-                const addrEl = document.getElementById(`addr-${id}`);
-                if (addrEl) {
-                    const status = (statusMap[band] + (isUpper ? 1 : 0)).toString(16).toUpperCase();
-                    const cc = (baseCCMap[param] + ((ch - 1) % 24)).toString(16).toUpperCase().padStart(2, '0');
-                    if (param === 'gain') {
-                        const extraCC = (((ch - 1) % 24) + 1).toString(16).toUpperCase().padStart(2, '0');
-                        addrEl.innerHTML = `<span style="opacity:0.4;">${status} ${extraCC}</span><br>${status} ${cc}`;
-                    } else {
-                        addrEl.innerText = `${status} ${cc}`;
-                    }
-                }
-            });
-        });
     }
 
     updateKnobUI(knobEl, midiVal) {
