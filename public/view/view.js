@@ -62,6 +62,9 @@ class ProView {
                         btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
                     }
                 }
+            } else if (data.type === 'reload') {
+                console.log('[VIEW] Auto-reloading due to file change...');
+                location.reload();
             } else if (data.type === 'setFader') {
                 // Future: Update specific fader UI
                 console.log('[VIEW] Lightweight Fader Sync:', data.channel, data.value);

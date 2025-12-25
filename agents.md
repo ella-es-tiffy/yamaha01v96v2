@@ -8,4 +8,7 @@
 ## Commit Guidelines
 - Commit messages must follow a strict structure: **`[version][scope][parameter]`**
 - **Scopes**: `proview` or `protouch`
-- **Example**: `[v0.1mon][proview][mute-test]`
+- **Example**: `v0.1mon proview mute-test`
+
+## Features
+- **Auto-Reload**: The `public/view` folder is watched by the server. Any changes to files in this directory will trigger an automatic browser reload for all connected Pro View clients.

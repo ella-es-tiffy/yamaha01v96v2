@@ -121,6 +121,17 @@ const server = http.createServer((req, res) => {
     });
 });
 
+// File Watcher for Standalone View Auto-Reload
+const VIEW_DIR = path.join(__dirname, 'public', 'view');
+if (fs.existsSync(VIEW_DIR)) {
+    fs.watch(VIEW_DIR, { recursive: true }, (eventType, filename) => {
+        if (filename) {
+            console.log(`[WATCH] Change detected in view: ${filename} (${eventType})`);
+            broadcast({ type: 'reload' });
+        }
+    });
+}
+
 server.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`🌐 Web Remote running at http://localhost:${HTTP_PORT}`);
 });
