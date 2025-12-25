@@ -168,13 +168,11 @@ header.view-header {
     flex-direction: row;
     width: 100%;
     height: 35%;
-    /* Only top 1/3 approx */
-    gap: 2px;
+    gap: 5px;
+    /* Increased from 2px */
     background: #050505;
     padding: 5px 5px 0 5px;
-    /* No bottom padding */
     border-bottom: 2px solid #333;
-    /* Visual separator */
 }
 
 .bridge-strip {
@@ -183,9 +181,10 @@ header.view-header {
     flex-direction: column;
     height: 100%;
     background: #111;
-    border-radius: 0 0 2px 2px;
+    border-radius: 0 0 3px 3px;
     overflow: hidden;
     position: relative;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
 .meter-track {
@@ -209,10 +208,11 @@ header.view-header {
             #ff3b30 100%);
     transition: height 0.05s linear;
     will-change: height;
+    opacity: 0.9;
 }
 
 .strip-label {
-    height: 20px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
