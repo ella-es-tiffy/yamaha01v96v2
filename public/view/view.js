@@ -20,6 +20,7 @@ class ProView {
     }
 
     init() {
+        this.renderMeterBridge();
         this.connect();
         this.setupNavigation();
         this.setupEncoder();
@@ -27,120 +28,46 @@ class ProView {
         this.startRaf();
     }
 
-    setupNavigation() {
-        const navContainer = document.getElementById('main-nav');
-        if (!navContainer) return;
+    renderMeterBridge() {
+        const container = document.getElementById('view-meter');
+        if (!container) return;
 
-        navContainer.addEventListener('click', (e) => {
-            const btn = e.target.closest('.nav-btn');
-            if (!btn) return;
+        container.innerHTML = `<div class="meter-bridge-container" id="bridge-container"></div>`;
+        const bridge = document.getElementById('bridge-container');
 
-            // UI Update
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // View Switch
-            const viewId = btn.dataset.view;
-            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
-            const activeView = document.getElementById(`view-${viewId}`);
-            if (activeView) activeView.classList.add('active');
-        });
-    }
-
-    getEventCoords(e) {
-        if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-        return { x: e.clientX, y: e.clientY };
-    }
-
-    connect() {
-        console.log('[VIEW] Connecting to:', this.wsUrl);
-        this.socket = new WebSocket(this.wsUrl);
-
-        this.socket.onopen = () => {
-            document.getElementById('status').innerText = 'CONNECTED';
-            document.getElementById('status').style.color = '#34c759';
-        };
-
-        this.socket.onclose = () => {
-            document.getElementById('status').innerText = 'DISCONNECTED';
-            document.getElementById('status').style.color = '#ff3b30';
-            setTimeout(() => this.connect(), 5000);
-        };
-
-        this.socket.onmessage = (msg) => {
-            const data = JSON.parse(msg.data);
-
-            // Handle Legacy Dialect from Server
-            const t = data.t || data.type;
-            const c = data.c || data.channel;
-            const v = (data.v !== undefined) ? data.v : data.value;
-
-            if (t === 'me' || t === 'meters') {
-                const meterData = data.d || data.data;
-                this.updateMeters(meterData.channels || meterData);
-            } else if (t === 'state') {
-                // Sync Settings (Meter Offset etc)
-                if (data.s) {
-                    this.settings = { ...this.settings, ...data.s };
-                    console.log('[VIEW] Settings synced:', this.settings);
-                }
-
-                // Handle Compact State for CH2 Test
-                if (data.m && data.m[1] !== undefined) {
-                    this.isMuted = !!data.m[1];
-                    const btn = document.getElementById('test-toggle');
-                    if (btn) {
-                        btn.classList.toggle('active', !this.isMuted);
-                        btn.classList.toggle('muted', this.isMuted);
-                        btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
-                    }
-                }
-                // Later we can loop data.n for Names etc.
-            } else if (t === 'r' || t === 'reload') {
-                console.log('[VIEW] Auto-reloading due to file change...');
-                location.reload();
-            } else if (t === 'f') { // setFader
-                console.log('[VIEW] Sync Fader:', c, v);
-            } else if (t === 'm') { // setMute
-                if (parseInt(c) === 2) {
-                    this.isMuted = v;
-                    const btn = document.getElementById('test-toggle');
-                    if (btn) {
-                        btn.classList.toggle('active', !this.isMuted);
-                        btn.classList.toggle('muted', this.isMuted);
-                        btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
-                    }
-                }
-            } else if (t === 'p') { // setPan
-                if (parseInt(c) === 1) {
-                    this.currentMidi = v;
-                    this.updateQueue.add('test-knob');
-                }
-            } else if (t === 'setUIOption') {
-                if (data.k === 'meterOffset') this.settings.meterOffset = data.v;
-            }
-        };
+        for (let i = 1; i <= 32; i++) {
+            const strip = document.createElement('div');
+            strip.className = 'bridge-strip';
+            strip.innerHTML = `
+                <div class="meter-track">
+                    <div class="meter-fill" id="meter-${i}"></div>
+                </div>
+                <div class="strip-label" id="label-${i}">${i}</div>
+            `;
+            bridge.appendChild(strip);
+        }
     }
 
     updateMeters(channels) {
         const offset = this.settings.meterOffset || 0;
 
-        // Update 16 meters
-        for (let i = 1; i <= 16; i++) {
+        // Update 32 meters
+        for (let i = 1; i <= 32; i++) {
             let val = channels[i - 1] || 0;
 
-            // Apply noise gate (mapping 0-100 offset to 0-32 meter range)
+            // Apply noise gate
             const gateThreshold = (offset / 100) * 32;
             if (val < gateThreshold) val = 0;
 
             const elId = `meter-${i}`;
             if (!this.elCache[elId]) this.elCache[elId] = document.getElementById(elId);
             const el = this.elCache[elId];
+
             if (el) {
-                const scale = val / 32;
-                el.style.webkitTransform = `scaleY(${scale})`;
-                el.style.transform = `scaleY(${scale})`;
+                // Map 0-32 (meter value) to 0-100% (CSS height)
+                // Linear mapping for now, matching the clean bar style
+                const pct = Math.min(100, (val / 32) * 100);
+                el.style.height = `${pct}%`;
             }
         }
     }

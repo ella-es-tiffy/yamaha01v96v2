@@ -145,60 +145,66 @@ header.view-header {
 }
 
 /* --- MODULE: Meters --- */
-.meters-test-grid {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    background: #111;
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
-    flex: 1;
-    gap: 15px;
+/* --- MODULE: 32-Channel Meter Bridge --- */
+.meter-bridge-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    gap: 2px;
+    background: #050505;
+    padding: 5px;
+    border-radius: 4px;
 }
 
-.test-meter-wrapper {
+.bridge-strip {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    background: #1a1a1a;
-    border: 1px solid #222;
-    padding: 10px;
-    border-radius: 6px;
     height: 100%;
-}
-
-.test-meter-track {
-    flex: 1;
-    width: 15px;
-    background: #000;
-    border: 1px solid #222;
-    border-radius: 3px;
-    position: relative;
+    background: #111;
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 10px;
+    position: relative;
 }
 
-.test-meter-fill {
+.meter-track {
+    flex: 1;
+    width: 100%;
+    background: #080808;
+    position: relative;
+    border-bottom: 1px solid #222;
+}
+
+.meter-fill {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 100%;
-    background: var(--on-green);
-    transform: scaleY(0);
-    -webkit-transform: scaleY(0);
-    transform-origin: bottom;
-    -webkit-transform-origin: bottom;
-    will-change: transform;
+    height: 0%;
+    background: linear-gradient(to top,
+            #34c759 0%,
+            #34c759 60%,
+            #ffcc00 80%,
+            #ff3b30 100%);
+    transition: height 0.05s linear;
+    will-change: height;
 }
 
-.test-label {
-    font-size: 0.7rem;
+.strip-label {
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
     font-weight: 700;
-    color: var(--text-secondary);
-    font-family: monospace;
+    color: #888;
+    background: #161616;
+    border-top: 1px solid #222;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 0 2px;
 }
 
 /* --- MODULE: Encoder/Knob --- */
