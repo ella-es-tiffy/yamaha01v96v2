@@ -1,8 +1,8 @@
 /**
  * MODULE: Pro View (Legacy Monitor)
- * VERSION: v0.1.1-mon (ES5 Transpiled)
- * NOTICE: This script is fully decoupled from app.js.
- * Built for high-performance monitoring on legacy devices (iOS 12).
+ * VERSION: v0.2.37-stable-ios12 (ES5 + Polling)
+ * NOTICE: These are the stable settings for iOS 12 iPad 2/3/4.
+ * Features: ES5 Transpilation, HTTP Polling Lock, No CSS Rotation.
  */
 var ProView = function () {
     this.wsUrl = 'ws://' + window.location.hostname + ':3007?client=view';
