@@ -586,27 +586,78 @@ header {
 }
 
 .dev-header {
-    font-size: 0.65rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1rem;
     font-weight: 900;
     color: var(--accent);
     letter-spacing: 2px;
-    margin-bottom: 20px;
-    text-align: center;
+    margin-bottom: 30px;
     border-bottom: 1px solid #333;
-    padding-bottom: 10px;
+    padding-bottom: 15px;
+}
+
+.dev-close-btn {
+    background: #440000;
+    color: #ff6666;
+    border: 1px solid #660000;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dev-close-btn:hover {
+    background: #660000;
+    color: #fff;
+}
+
+.dev-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dev-card {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dev-card-title {
+    font-size: 0.7rem;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 1.5px;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #222;
+    padding-bottom: 8px;
 }
 
 .dev-group {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .dev-group label {
     display: block;
     font-size: 0.55rem;
-    color: #666;
+    color: #888;
     font-weight: 800;
     margin-bottom: 8px;
     letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .dev-btn {

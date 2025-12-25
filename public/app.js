@@ -575,9 +575,19 @@ class YamahaTouchRemote {
             const masterAddr = document.getElementById('addr-master');
             if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
 
-            // TOGGLE DEV PANEL (Fullscreen Overlay)
-            const devPanel = document.getElementById('dev-panel');
             if (devPanel) devPanel.classList.toggle('active', this.debugUI);
+        });
+
+        document.getElementById('dev-close-btn')?.addEventListener('click', () => {
+            this.debugUI = false;
+            const btn = document.getElementById('debug-ui-btn');
+            if (btn) {
+                btn.style.background = '#333';
+                btn.style.color = '#fff';
+            }
+            document.getElementById('dev-panel')?.classList.remove('active');
+            this.renderMixer();
+            this.renderEQ();
         });
 
         // Developer Settings Handlers
