@@ -204,6 +204,9 @@ class ProView {
     updateMeters(channels) {
         const offset = this.settings.meterOffset || 0;
 
+        // Initialize cache if needed
+        if (!this.dbValueCache) this.dbValueCache = new Array(this.meterCount + 1).fill(null);
+
         for (let i = 1; i <= this.meterCount; i++) {
             let val = channels[i - 1] || 0;
             const gateThreshold = (offset / 100) * 32;
@@ -222,15 +225,19 @@ class ProView {
                 const pct = this.getMeterPct(val);
                 el.style.height = `${pct}%`;
 
-                // Update dB Box
+                // Update dB Box - OPTIMIZED to avoid DOM Reads
                 if (dbEl) {
-                    // Always show value to prevent jumping
                     const dbStr = this.valToDB(val);
-                    if (dbEl.innerText !== dbStr) {
+                    // Check against JS cache, NOT DOM
+                    if (this.dbValueCache[i] !== dbStr) {
                         dbEl.innerText = dbStr;
-                        dbEl.style.color = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
+                        const newColor = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
+                        dbEl.style.color = newColor;
+
+                        this.dbValueCache[i] = dbStr;
                     }
                 }
+
                 // Clear old innerText
                 el.innerText = '';
             }
