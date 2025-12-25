@@ -189,6 +189,7 @@ header {
     padding: 6px 0;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .channel-strip.selected {
@@ -450,6 +451,10 @@ header {
 
 .master-strip .fader-thumb {
     background: linear-gradient(180deg, var(--accent) 0%, #0088cc 100%);
+}
+
+.master-strip .meter-bar {
+    right: 22px;
 }
 
 /* --- MODULE: EQ Section --- */

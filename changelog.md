@@ -1,5 +1,10 @@
 # CHANGELOG - YAMAHA 01V96 PRO TOUCH
 
+## [v1.1.1-Layout] - 2025-12-26
+### Fixed
+- **Layout**: Fixed an issue where the meter bars were positioning themselves relative to the main frame instead of the channel strip, causing a thin vertical "ghost strip" to appear on the far right edge of the screen.
+- **Fix**: Added `position: relative` to `.channel-strip` to correctly contain the absolute positioned `.meter-bar`.
+
 ## [v0.985d-Fix2] - 2024-12-24 (Hotfix)
 ### Fixed
 - **EQ Parameter Mapping**: Corrected the Gain Parameter IDs for L-Mid, H-Mid, and High bands based on hardware verification "1 4 2 3".
