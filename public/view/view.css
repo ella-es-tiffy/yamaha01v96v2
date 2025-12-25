@@ -152,9 +152,9 @@ header.view-header {
 .peak-btn-vertical {
     position: absolute;
     left: 15px;
-    top: 264px;
+    top: 277px;
     width: 30px;
-    height: 61px;
+    height: 28px;
     background: #1a1a1a;
     border: 1px solid #00d2ff;
     /* Cyan border in OFF state */

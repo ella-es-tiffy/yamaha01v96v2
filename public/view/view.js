@@ -148,7 +148,7 @@ class ProView {
         const btn = document.createElement('button');
         btn.id = 'peak-hold-toggle';
         btn.className = 'peak-btn-vertical';
-        btn.innerHTML = 'P<br>E<br>A<br>K'; // Vertical text
+        btn.innerText = 'PK'; // Simple text instead of vertical
         btn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             e.stopPropagation();
