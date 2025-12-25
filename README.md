@@ -1,6 +1,8 @@
 # Yamaha 01V96 V2 Web Control
 
 Web-basierte Fernsteuerung für den Yamaha 01V96 V2 Digital Mixer via MIDI über VirtualHere USB-over-IP.
+<img width="1101" height="751" alt="Bildschirmfoto 2025-12-25 um 08 37 56" src="https://github.com/user-attachments/assets/90761085-ae28-40e5-9b9d-6cb4a6f236ba" />
+<img width="1101" height="751" alt="Bildschirmfoto 2025-12-25 um 08 38 08" src="https://github.com/user-attachments/assets/c799b8f4-617c-4dbb-bdc3-8121c728bcd6" />
 
 ## System-Status
 
