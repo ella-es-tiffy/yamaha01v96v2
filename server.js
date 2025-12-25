@@ -141,7 +141,7 @@ class YamahaServer {
             };
         }
 
-        const revMap = { 'setFader': 'f', 'setMute': 'm', 'setPan': 'p', 'setEQ': 'e' };
+        const revMap = { 'setFader': 'f', 'setMute': 'm', 'setPan': 'p', 'setEQ': 'e', 'setUILock': 'l' };
         if (revMap[data.type]) {
             return {
                 t: revMap[data.type],
