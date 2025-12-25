@@ -298,8 +298,8 @@ header.view-header {
     background: linear-gradient(to top,
             #34c759 0%,
             /* -60dB (bottom) */
-            #34c759 76%,
-            /* 0dB */
+            #34c759 70%,
+            /* ~0dB (adjusted lower) */
             #ffcc00 92%,
             /* +5dB */
             #ff3b30 100%);
