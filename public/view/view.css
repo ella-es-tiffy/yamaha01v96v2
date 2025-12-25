@@ -322,11 +322,6 @@ header.view-header {
     will-change: height;
 }
 
-.meter-fill.clip-mode {
-    background: #ff3b30 !important;
-    box-shadow: 0 0 8px #ff3b30;
-}
-
 /* --- Status Burger --- */
 .status-stack {
     width: 100%;

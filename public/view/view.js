@@ -239,13 +239,6 @@ class ProView {
                 // Inverted: curtain height = 100% - signal level
                 el.style.height = `${100 - pct}%`;
 
-                // Clip Warning: Glow effect at >+5dB
-                if (val >= 31) {
-                    el.classList.add('clip-mode');
-                } else {
-                    el.classList.remove('clip-mode');
-                }
-
                 // Update dB Box - OPTIMIZED to avoid DOM Reads
                 if (dbEl) {
                     const dbStr = this.valToDB(val);
