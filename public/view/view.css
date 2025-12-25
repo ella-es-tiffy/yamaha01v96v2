@@ -198,6 +198,14 @@ header.view-header {
     background: #080808;
     position: relative;
     border-bottom: 1px solid #222;
+    /* Add Grid Lines (Ticks) */
+    background-image: repeating-linear-gradient(to bottom,
+            rgba(255, 255, 255, 0.1) 0px,
+            rgba(255, 255, 255, 0.1) 1px,
+            transparent 1px,
+            transparent 20%);
+    /* Approx Ticks: 5 lines = 20% steps */
+    /* If visual range is 60dB, each 20% is 12dB. Not perfect log, but gives visual anchor. */
 }
 
 .meter-fill {
@@ -206,11 +214,16 @@ header.view-header {
     left: 0;
     width: 100%;
     height: 0%;
+    /* Gradient adapted to typical meter colors: Green -> Yellow (0dB) -> Red (Clip) */
     background: linear-gradient(to top,
             #34c759 0%,
-            #34c759 60%,
-            #ffcc00 80%,
+            /* -60 */
+            #34c759 70%,
+            /* -10 */
+            #ffcc00 85%,
+            /* 0 to +5 */
             #ff3b30 100%);
+    /* Clip */
     transition: height 0.05s linear;
     will-change: height;
     opacity: 0.9;
