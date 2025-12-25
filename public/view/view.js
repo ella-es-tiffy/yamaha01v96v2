@@ -151,32 +151,33 @@ class ProView {
         if (val <= 0) return 0;
         if (val >= 32) return 100;
 
-        // Piecewise approximation for Yamaha Scale
-        // 32 (+10dB) -> 100%
-        // 28 (+5dB)  -> 85%
-        // 24 (0dB)   -> 75%
-        // 20 (-5dB)  -> 65%
-        // 16 (-10dB) -> 55%
-        // 12 (-15dB) -> 45%
-        // 8  (-20dB) -> 35%
-        // 4  (-30dB) -> 20%
-        // 0  (-oo)   -> 0%
+        // Adjusted Mapping based on -5dB Sinus = Val ~28
+        // We need Val 28 to result in 65% Height (-5dB Marker).
+        // Val 32 is 100%.
 
-        // It looks like each step of 4 is roughly 10-12.5% change in this visual scale
-        // Slope = 2.5 per unit
+        // High Range (Val 24-32): Very Steep
+        if (val >= 24) {
+            // Map 24..32 to 45%..100%
+            // Range 8 -> 55%
+            // Slope ~6.8
+            // At 28: 45 + (4 * 6.8) = 45 + 27.2 = 72.2% (Close to 0dB)
+            // Let's force fit:
+            // 32 = 100
+            // 30 = 85 (+5)
+            // 29 = 75 (0)
+            // 28 = 65 (-5)
 
-        // Let's use: percentage = 2.5 * val + 15
-        // Check:
-        // 32 * 2.5 + 15 = 80 + 15 = 95 (Close enough to 100)
-        // 24 * 2.5 + 15 = 60 + 15 = 75 (MATCH 0dB!)
-        // 16 * 2.5 + 15 = 40 + 15 = 55 (MATCH -10dB!)
-        // 8 * 2.5 + 15 = 20 + 15 = 35 (MATCH -20dB!)
+            // Linear Interpolation for high vals:
+            // (val - 28) * 8.75 + 65
+            // Check 28: 65% (-5dB). PERFECT.
+            // Check 32: 4 * 8.75 + 65 = 35 + 65 = 100%. PERFECT.
+            return (val - 28) * 8.75 + 65;
+        }
 
-        let p = (2.5 * val) + 15;
-        // Fine tune low end to not jump too fast
-        if (val < 4) p = val * 5; // 0->0, 2->10, 4->20
-
-        return Math.min(100, Math.max(0, p));
+        // Low Range (Val 0-24):
+        // Map 0..24 to 0%..30% (Since 28 is 65%, 24 must be lower, say 30% (-20dB area))
+        // Linear slope: 30/24 = 1.25
+        return val * 1.5; // at 24 -> 36% (-20dB).
     }
 
     valToDB(val) {
