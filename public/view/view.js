@@ -667,7 +667,7 @@ ProView.prototype.renderKnob = function (id, val) {
 // Snapshot Engine for Legacy iOS (Zoom Out Lock)
 ProView.prototype.toggleLockUI = function (locked) {
     var overlay = document.getElementById('global-lock-overlay');
-    var stage = document.querySelector('.view-stage');
+    var stage = document.querySelector('.view-container');
 
     if (locked) {
         if (document.getElementById('snapshot-proxy')) return;
