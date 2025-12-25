@@ -15,14 +15,58 @@ class ProView {
         this.activeKnob = false;
         this.isMuted = false;
         this.settings = { meterOffset: 0 };
+        this.meterCount = 16; // Default to 16 channels
 
         this.init();
     }
 
+    // ... (rest omitted)
+
+    updateMeters(channels) {
+        const offset = this.settings.meterOffset || 0;
+
+        for (let i = 1; i <= this.meterCount; i++) {
+            let val = channels[i - 1] || 0;
+            const gateThreshold = (offset / 100) * 32;
+            if (val < gateThreshold) val = 0;
+
+            const elId = `meter-${i}`;
+            const dbId = `db-${i}`;
+
+            if (!this.elCache[elId]) this.elCache[elId] = document.getElementById(elId);
+            if (!this.elCache[dbId]) this.elCache[dbId] = document.getElementById(dbId);
+
+            const el = this.elCache[elId];
+            const dbEl = this.elCache[dbId];
+
+            if (el) {
+                const pct = this.getMeterPct(val);
+                el.style.height = `${pct}%`;
+
+                // Update dB Box
+                if (dbEl) {
+                    if (val > 4) {
+                        const dbStr = this.valToDB(val);
+                        if (dbEl.innerText !== dbStr) {
+                            dbEl.innerText = dbStr;
+                            dbEl.style.color = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
+                        }
+                    } else {
+                        if (dbEl.innerText !== '') dbEl.innerText = '';
+                    }
+                }
+
+                // Clear old innerText just in case
+                el.innerText = '';
+            }
+        }
+    }
+
     init() {
         this.renderMeterBridge();
-        this.connect();
         this.setupNavigation();
+        this.setupSettingsBtn(); // New
+        this.connect();
         this.setupEncoder();
         this.setupToggle();
         this.startRaf();
@@ -48,6 +92,38 @@ class ProView {
         });
     }
 
+    setupSettingsBtn() {
+        const header = document.querySelector('.view-header');
+        if (!header) return;
+
+        // Remove existing if any (for HMR)
+        const old = document.getElementById('meter-toggle');
+        if (old) old.remove();
+
+        const btn = document.createElement('button');
+        btn.id = 'meter-toggle';
+        btn.className = 'settings-btn';
+        btn.innerText = this.meterCount + ' CH';
+        btn.addEventListener('touchstart', (e) => { // iOS
+            this.toggleMeterCount();
+        }, { passive: true });
+        btn.addEventListener('click', (e) => { // Desktop
+            this.toggleMeterCount();
+        });
+
+        header.appendChild(btn);
+    }
+
+    toggleMeterCount() {
+        this.meterCount = (this.meterCount === 16) ? 32 : 16;
+        document.getElementById('meter-toggle').innerText = this.meterCount + ' CH';
+        this.renderMeterBridge();
+        // Save to server settings?
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify({ type: 'setUIOption', key: 'meterCount', value: this.meterCount }));
+        }
+    }
+
     getEventCoords(e) {
         if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
         if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -58,7 +134,12 @@ class ProView {
         const container = document.getElementById('view-meter');
         if (!container) return;
 
-        container.innerHTML = `<div class="meter-bridge-container" id="bridge-container"></div>`;
+        // Wrap in Module Frame
+        container.innerHTML = `
+            <div class="module-frame">
+                <div class="meter-bridge-container" id="bridge-container"></div>
+            </div>
+        `;
         const bridge = document.getElementById('bridge-container');
 
         // Left Scale Strip
@@ -78,7 +159,7 @@ class ProView {
         `;
         bridge.appendChild(scaleStrip);
 
-        for (let i = 1; i <= 32; i++) {
+        for (let i = 1; i <= this.meterCount; i++) {
             const strip = document.createElement('div');
             strip.className = 'bridge-strip';
             strip.innerHTML = `
@@ -99,50 +180,53 @@ class ProView {
                         <div class="meter-fill" id="meter-${i}"></div>
                     </div>
                 </div>
+                <div class="db-val-box" id="db-${i}"></div>
+                <!-- Status Indicators removed for stability on iOS 12 -->
+                <!-- <div class="status-row" id="status-${i}"> ... </div> -->
                 <div class="strip-label" id="label-${i}">${i}</div>
             `;
             bridge.appendChild(strip);
         }
+
+        // Clear Cache to force re-fetch
+        this.elCache = {};
     }
 
     updateMeters(channels) {
         const offset = this.settings.meterOffset || 0;
 
-        for (let i = 1; i <= 32; i++) {
+        for (let i = 1; i <= this.meterCount; i++) {
             let val = channels[i - 1] || 0;
             const gateThreshold = (offset / 100) * 32;
             if (val < gateThreshold) val = 0;
 
             const elId = `meter-${i}`;
+            const dbId = `db-${i}`;
+
             if (!this.elCache[elId]) this.elCache[elId] = document.getElementById(elId);
+            if (!this.elCache[dbId]) this.elCache[dbId] = document.getElementById(dbId);
+
             const el = this.elCache[elId];
+            const dbEl = this.elCache[dbId];
 
             if (el) {
-                // Non-Linear Mapping to match the scale
                 const pct = this.getMeterPct(val);
                 el.style.height = `${pct}%`;
 
-                // Show dB value
-                if (val > 4) {
-                    const dbStr = this.valToDB(val);
-                    if (el.dataset.lastDb !== dbStr && pct > 20) {
-                        el.innerText = dbStr;
-                        el.style.color = '#fff';
-                        el.style.fontSize = '0.55rem';
-                        el.style.fontWeight = '700';
-                        el.style.display = 'flex';
-                        el.style.justifyContent = 'center';
-                        el.style.alignItems = 'flex-start';
-                        el.style.paddingTop = '2px';
-                        el.style.textShadow = '0 1px 2px #000';
-                        el.dataset.lastDb = dbStr;
-                    } else if (pct <= 20) {
-                        el.innerText = '';
-                        el.dataset.lastDb = '';
+                // Update dB Box
+                if (dbEl) {
+                    if (val > 4) {
+                        const dbStr = this.valToDB(val);
+                        if (dbEl.innerText !== dbStr) {
+                            dbEl.innerText = dbStr;
+                            dbEl.style.color = (dbStr === 'CLIP') ? '#ff3b30' : '#888';
+                        }
+                    } else {
+                        if (dbEl.innerText !== '') dbEl.innerText = '';
                     }
-                } else {
-                    if (el.dataset.lastDb) el.innerText = '';
                 }
+                // Clear old innerText
+                el.innerText = '';
             }
         }
     }
@@ -151,25 +235,15 @@ class ProView {
         if (val <= 0) return 0;
         if (val >= 32) return 100;
 
-        // Ultra-Steep Mapping v2
-        // Based on feedback: Real -5dB results in display "0dB" (Val ~29 in previous logic).
-        // Target: Val 29 MUST be at 65% height (-5dB Marker).
-        // Remaining range (29->32) covers -5dB -> +10dB (35% delta).
-        // Slope = 11.66% per step.
-
+        // Ultra-Steep Mapping v2 (Preserved)
         if (val >= 29) {
             return (val - 29) * 11.66 + 65;
         }
-
-        // Low Range (0-29 maps to 0-65%)
         return val * 2.24;
     }
 
     valToDB(val) {
         if (val >= 31) return 'CLIP';
-        // Rough estimation for display text
-        // 29 = -5, 32 = +10.
-        // (val - 29) * 5 - 5 ?
         if (val >= 29) return Math.round((val - 29) * 5 - 5);
         return Math.round((val - 29) * 3 - 5);
     }
