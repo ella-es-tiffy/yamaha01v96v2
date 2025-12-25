@@ -1,4 +1,7 @@
-
+/**
+ * MODULE: Server (Backend Bridge)
+ * VERSION: v0.1.1-mon
+ */
 const WebSocket = require('ws');
 const Yamaha01V96Controller = require('./yamaha_controller');
 
@@ -141,6 +144,11 @@ function broadcast(data, skipWs) {
 
 const http = require('http');
 const fs = require('fs');
+/**
+ * MODULE: Server (Backend Bridge)
+ * VERSION: v0.1.1-mon
+ */
+const express = require('express');
 const path = require('path');
 const HTTP_PORT = 8009;
 

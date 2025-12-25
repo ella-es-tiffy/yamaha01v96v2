@@ -1,9 +1,8 @@
 /**
- * Yamaha 01V96 PRO VIEW - STANDALONE ENGINE
+ * MODULE: Pro View (Legacy Monitor)
+ * VERSION: v0.1.1-mon
  * NOTICE: This script is fully decoupled from app.js.
  * Built for high-performance monitoring on legacy devices (iOS 12).
- * ARCHITECTURAL RULE: The WebSocket/Server MUST NOT be explicitly adapted for this View.
- * This View must consume generic data streams and handle filtering/rendering locally.
  */
 class ProView {
     constructor() {

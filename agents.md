@@ -1,16 +1,23 @@
-# Architecture & Constraints
+## Modules & Versioning
+The project is split into three core modules, each maintaining its own versioning (synchronized in file headers and commit messages):
 
-## View Standalone (Legacy Support)
-- **Decoupling**: The files in `public/view/` are standalone and must remain decoupled from `public/app.js` and `public/style.css`.
-- **WebSocket Protocol**: The WebSocket server must NOT be explicitly adapted for the "Pro View". 
-- **Client-Side Responsibility**: The View must be able to consume the same generic data streams as the main application. Any filtering, scaling, or specialized rendering for legacy devices must happen exclusively on the client side (in `view.js` / `view.css`).
+- **Module: Pro Touch (`public/app.js`)**
+  - **Environment**: Modern JS (Spread syntax, ES6+).
+  - **Role**: Primary user interface for modern devices.
+- **Module: Pro View (`public/view/`)**
+  - **Environment**: Legacy JS (iOS 12 compatible).
+  - **Role**: Lightweight monitoring/control for old hardware.
+  - **Constraint**: Must remain fully decoupled from Pro Touch.
+- **Module: Server (`server.js`)**
+  - **Role**: Agnostic bridge & Translation layer.
+  - **Logic**: Handles communication between Mixer, Pro Touch, and Pro View, including dialect translation.
 
 ## Commit Guidelines
-- Commit messages must follow a strict structure: **`[version][scope][parameter]`**
-- **Scopes**: `proview` or `protouch`
-- **Example**: `v0.1mon proview mute-test`
+- Commit messages must follow a strict structure: **`[version][module][parameter]`**
+- **Modules**: `protouch`, `proview`, `server`
+- **Example**: `[v0.1.1-mon][proview][fix-sync]`
 
 ## Compatibility Strategy
-- **Pro Touch (`public/app.js`)**: Modern environment. Use modern JS syntax (Spread, etc.). No legacy constraints.
-- **Pro View (`public/view/`)**: Legacy environment (iOS 12). Avoid modern syntax (Spread, Template Literals if needed, etc.) to ensure operation on old hardware.
-- **Server (`server.js`)**: Agnostic bridge. Handles messages from both environments without requiring specific adaptations for one or the other.
+- **Pro Touch**: No legacy constraints. Use standard modern practices.
+- **Pro View**: Legacy-first. Avoid syntax that breaks Safari 12.
+- **Server**: Handles translation between modern and legacy dialects.

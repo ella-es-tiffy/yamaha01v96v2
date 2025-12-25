@@ -1,6 +1,6 @@
-
 /**
- * Yamaha 01V96 Pro Touch Remote - iPad Engine (v10 - Yamaha Classic Aesthetic & Hex Debug)
+ * MODULE: Pro Touch (Modern Remote)
+ * VERSION: v0.1.1-mon (Yamaha Classic Aesthetic & Hex Debug)
  */
 
 class YamahaTouchRemote {
