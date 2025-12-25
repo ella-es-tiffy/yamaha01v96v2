@@ -109,9 +109,29 @@ header.view-header {
     height: calc(100vh - 48px);
     position: relative;
     overflow: hidden;
-    padding: 0;
+    padding: 0 0 20px 0;
+    /* 20px bottom padding */
     margin: 0;
     background: #0a0a0a;
+}
+
+.settings-btn {
+    background: transparent;
+    color: #666;
+    padding: 8px 12px;
+    border: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: auto;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.settings-btn:active,
+.settings-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
 }
 
 .view-content {
