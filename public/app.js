@@ -268,7 +268,9 @@ class YamahaTouchRemote {
             if (this.currentPresetIdx > 0) {
                 this.currentPresetIdx--;
                 this.updatePresetDisplay();
-                this.send('recallEQ', { channel: this.selectedChannel, preset: this.currentPresetIdx + 1 });
+                const presetId = this.currentPresetIdx + 1;
+                console.log(`[UI] Recalling Preset ${presetId} (idx ${this.currentPresetIdx})`);
+                this.send('recallEQ', { channel: this.selectedChannel, preset: presetId });
             }
         });
 
@@ -277,7 +279,9 @@ class YamahaTouchRemote {
             if (this.currentPresetIdx < 127) {
                 this.currentPresetIdx++;
                 this.updatePresetDisplay();
-                this.send('recallEQ', { channel: this.selectedChannel, preset: this.currentPresetIdx + 1 });
+                const presetId = this.currentPresetIdx + 1;
+                console.log(`[UI] Recalling Preset ${presetId} (idx ${this.currentPresetIdx})`);
+                this.send('recallEQ', { channel: this.selectedChannel, preset: presetId });
             }
         });
 

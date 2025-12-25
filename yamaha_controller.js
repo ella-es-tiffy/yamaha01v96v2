@@ -3,6 +3,7 @@ const midi = require('midi');
 const EQPresetManager = require('./lib/eqPresets');
 const BulkParser = require('./lib/bulkParser');
 const MIDIHelpers = require('./lib/midiHelpers');
+const FACTORY_EQ_PRESETS = require('./lib/factoryPresets');
 
 class Yamaha01V96Controller {
     constructor(portNumber = 0) {
@@ -41,7 +42,8 @@ class Yamaha01V96Controller {
                 comp: { on: false, thr: 0, rat: 0, atk: 0, rel: 0, gain: 0, knee: 0 },
                 routing: { stereo: false, direct: false, bus: Array(8).fill(false) }
             })),
-            master: { fader: 0, mute: false, solo: false }
+            master: { fader: 0, mute: false, solo: false },
+            eqPresets: { ...FACTORY_EQ_PRESETS } // Pre-populate with factory names
         };
     }
 
@@ -664,6 +666,8 @@ class Yamaha01V96Controller {
             { id: 0x1C, name: 'Fader', count: 32, p1: 0x00 },
             { id: 0x1A, name: 'Mute', count: 32, p1: 0x00 },
             { id: 0x1B, name: 'Pan', count: 32, p1: 0x00 },
+            { id: 0x1D, name: 'Att', count: 32, p1: 0x00 }, // Attenuation
+            { id: 0x20, name: 'EQType', count: 32, p1: 0x00 }, // EQ Type 1/2
             { id: 0x20, name: 'EQToggle', count: 32, p1: 0x0F }, // EQ On/Off
         ];
 
