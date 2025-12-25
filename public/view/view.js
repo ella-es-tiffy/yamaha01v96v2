@@ -64,12 +64,12 @@ class ProView {
     }
 
     setupLockUI() {
-        const unlockSurface = document.querySelector('.unlock-surface');
-        if (unlockSurface) {
-            unlockSurface.addEventListener('click', () => {
+        const lockOverlay = document.getElementById('global-lock-overlay');
+        if (lockOverlay) {
+            lockOverlay.addEventListener('click', () => {
                 this.sendLock(false);
             });
-            unlockSurface.addEventListener('touchstart', (e) => {
+            lockOverlay.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 this.sendLock(false);
             }, { passive: false });

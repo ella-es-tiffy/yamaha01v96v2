@@ -727,11 +727,12 @@ class YamahaTouchRemote {
                 this.send('setUILock', { value: true });
             });
 
-            unlockSurface?.addEventListener('click', () => {
+            // Unlock when clicking ANYWHERE on the overlay (not just the surface)
+            lockOverlay.addEventListener('click', () => {
                 this.send('setUILock', { value: false });
             });
 
-            unlockSurface?.addEventListener('touchstart', (e) => {
+            lockOverlay.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 this.send('setUILock', { value: false });
             }, { passive: false });
