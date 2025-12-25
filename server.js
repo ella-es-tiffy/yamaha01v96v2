@@ -39,15 +39,17 @@ const wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
 wss.on('connection', (ws) => {
     console.log('[WS] Client connected, sending initial state. Ch1 eqOn:', yamaha.state.channels[0].eqOn);
     ws.send(JSON.stringify({ type: 'state', data: yamaha.state }));
+
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
             console.log('WS RX:', data.type, data.channel, data.value);
+
+            // Execute command on Yamaha controller
             if (data.type === 'setFader') yamaha.setFader(data.channel, data.value);
             else if (data.type === 'setMute') yamaha.setMute(data.channel, data.value);
-            else if (data.type === 'sync') yamaha.deepSync(); // Added 'sync' command
+            else if (data.type === 'sync') yamaha.deepSync();
             else if (data.type === 'requestSync') yamaha.requestInitialState();
-            // --- NEW EQ HANDLER ---
             else if (data.type === 'setEQ') yamaha.setEQ(data.channel, data.band, data.param, data.value);
             else if (data.type === 'setEQOn') yamaha.setEQOn(data.channel, data.value);
             else if (data.type === 'setAtt') yamaha.setAttenuation(data.channel, data.value);
@@ -67,6 +69,13 @@ wss.on('connection', (ws) => {
                     else ws.send(JSON.stringify({ type: 'changelog', data: formatMarkdown(log) }));
                 });
             }
+
+            // LIGHTWEIGHT BROADCAST: Send this change to all OTHER clients immediately
+            // This ensures Pro View sees Pro Touch changes (and vice versa) without waiting for Mixer feedback
+            if (data.type.startsWith('set')) {
+                broadcast(data, ws);
+            }
+
         } catch (e) { console.error('WS Error:', e); }
     });
 });
@@ -79,9 +88,13 @@ function formatMarkdown(md) {
         .replace(/\n\n/g, '<br>');
 }
 
-function broadcast(data) {
+function broadcast(data, skipWs) {
     const msg = JSON.stringify(data);
-    wss.clients.forEach(client => { if (client.readyState === WebSocket.OPEN) client.send(msg); });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && client !== skipWs) {
+            client.send(msg);
+        }
+    });
 }
 
 const http = require('http');

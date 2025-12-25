@@ -62,6 +62,23 @@ class ProView {
                         btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
                     }
                 }
+            } else if (data.type === 'setFader') {
+                // Future: Update specific fader UI
+                console.log('[VIEW] Lightweight Fader Sync:', data.channel, data.value);
+            } else if (data.type === 'setMute') {
+                if (parseInt(data.channel) === 2) {
+                    this.toggleState = data.value;
+                    const btn = document.getElementById('test-toggle');
+                    if (btn) {
+                        btn.classList.toggle('active', this.toggleState);
+                        btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
+                    }
+                }
+            } else if (data.type === 'setPan') {
+                if (parseInt(data.channel) === 1) {
+                    this.currentMidi = data.value;
+                    this.updateQueue.add('test-knob');
+                }
             }
         };
     }

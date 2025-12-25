@@ -1176,6 +1176,34 @@ class YamahaTouchRemote {
                     const knob = document.getElementById(knobId);
                     if (knob) this.updateKnobUI(knob, d.value);
                 }
+            } else if (data.type === 'setFader') {
+                const ch = data.channel;
+                const val = data.value;
+                if (ch === 'master') {
+                    this.state.master.fader = val;
+                } else {
+                    const idx = parseInt(ch) - 1;
+                    if (this.state.channels[idx]) this.state.channels[idx].fader = val;
+                }
+                this.updateFaderUI(ch, val);
+            } else if (data.type === 'setMute') {
+                const ch = data.channel;
+                const val = data.value;
+                if (ch === 'master') {
+                    this.state.master.mute = val;
+                } else {
+                    const idx = parseInt(ch) - 1;
+                    if (this.state.channels[idx]) this.state.channels[idx].mute = val;
+                }
+                this.updateMuteUI(ch, val);
+            } else if (data.type === 'setPan') {
+                const ch = parseInt(data.channel);
+                const val = data.value;
+                const idx = ch - 1;
+                if (this.state.channels[idx]) {
+                    this.state.channels[idx].pan = val;
+                    this.updatePanUI(ch, val);
+                }
             } else if (data.type === 'meters') {
                 // Update only meters, don't touch faders
                 for (let i = 0; i < 36; i++) {
