@@ -75,8 +75,11 @@ ProView.prototype.setupLockUI = function () {
         var handleUnlock = function (e) {
             if (e && e.preventDefault) e.preventDefault();
             console.log('🔓 Unlocking UI (PV Local)...');
-            lockOverlay.classList.remove('active');
-            document.body.classList.remove('mode-lock-active');
+
+            // Optimistic Update
+            self.settings.uiLocked = false;
+            self.syncLockState();
+
             self.sendLock(false);
         };
 
@@ -89,6 +92,11 @@ ProView.prototype.setupLockUI = function () {
         var handleLock = function (e) {
             if (e && e.preventDefault) e.preventDefault();
             console.log('🔒 Locking UI (PV Local)...');
+
+            // Optimistic Update
+            self.settings.uiLocked = true;
+            self.syncLockState();
+
             self.sendLock(true);
         };
         lockBtn.addEventListener('click', handleLock);
