@@ -2,6 +2,8 @@
  * Yamaha 01V96 PRO VIEW - STANDALONE ENGINE
  * NOTICE: This script is fully decoupled from app.js.
  * Built for high-performance monitoring on legacy devices (iOS 12).
+ * ARCHITECTURAL RULE: The WebSocket/Server MUST NOT be explicitly adapted for this View.
+ * This View must consume generic data streams and handle filtering/rendering locally.
  */
 class ProView {
     constructor() {
@@ -49,6 +51,17 @@ class ProView {
             const data = JSON.parse(msg.data);
             if (data.type === 'meters') {
                 this.updateMeters(data.data.channels);
+            } else if (data.type === 'state') {
+                // Sync Ch 2 Mute State back to Toggle
+                const ch2 = data.data.channels[1]; // Ch 2 is index 1
+                if (ch2 && ch2.mute !== undefined) {
+                    this.toggleState = ch2.mute;
+                    const btn = document.getElementById('test-toggle');
+                    if (btn) {
+                        btn.classList.toggle('active', this.toggleState);
+                        btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
+                    }
+                }
             }
         };
     }
@@ -124,11 +137,20 @@ class ProView {
         const onToggle = (e) => {
             if (e.type === 'touchstart') e.preventDefault();
             this.toggleState = !this.toggleState;
-            btn.classList.toggle('active', this.toggleState);
-            btn.innerText = this.toggleState ? 'ON' : 'OFF';
 
-            // Visual feedback loop check
-            console.log('[TOGGLE] State:', this.toggleState);
+            // Send to Server: Toggle Mute for Channel 2
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                this.socket.send(JSON.stringify({
+                    type: 'setMute',
+                    channel: 2,
+                    value: this.toggleState
+                }));
+            }
+
+            // Optimistic UI update
+            btn.classList.toggle('active', this.toggleState);
+            btn.innerText = this.toggleState ? 'MUTED' : 'ON (CH2)';
+            console.log('[TOGGLE] CH2 Mute set to:', this.toggleState);
         };
 
         btn.addEventListener('touchstart', onToggle, { passive: false });
