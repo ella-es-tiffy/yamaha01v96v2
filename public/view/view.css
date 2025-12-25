@@ -134,6 +134,21 @@ header.view-header {
     border-radius: 4px;
 }
 
+.settings-btn.active {
+    color: #00d2ff;
+    background: rgba(0, 210, 255, 0.1);
+}
+
+.peak-hold-dot {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 2px;
+    display: none;
+    box-shadow: 0 0 4px currentColor;
+}
+
 .view-content {
     display: none;
     flex-direction: column;

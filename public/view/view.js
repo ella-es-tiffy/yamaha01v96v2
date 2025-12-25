@@ -16,6 +16,9 @@ class ProView {
         this.isMuted = false;
         this.settings = { meterOffset: 0 };
         this.meterCount = 16; // Default to 16 channels
+        this.peakHoldEnabled = false; // Peak Hold feature
+        this.peakValues = new Array(33).fill(0); // Peak per channel (1-32)
+        this.peakTimers = new Array(33).fill(null); // Timeout handles
 
         this.init();
     }
@@ -24,7 +27,8 @@ class ProView {
     init() {
         this.renderMeterBridge();
         this.setupNavigation();
-        this.setupSettingsBtn(); // New
+        this.setupPeakHoldBtn(); // Peak Hold toggle
+        this.setupSettingsBtn(); // Channel count toggle
         this.connect();
         this.setupEncoder();
         this.setupToggle();
@@ -128,6 +132,52 @@ class ProView {
         }
     }
 
+    setupPeakHoldBtn() {
+        const header = document.querySelector('.view-header');
+        if (!header) return;
+
+        const old = document.getElementById('peak-hold-toggle');
+        if (old) old.remove();
+
+        const btn = document.createElement('button');
+        btn.id = 'peak-hold-toggle';
+        btn.className = 'settings-btn peak-btn';
+        btn.innerText = 'PEAK';
+        btn.addEventListener('touchstart', (e) => {
+            this.togglePeakHold();
+        }, { passive: true });
+        btn.addEventListener('click', (e) => {
+            this.togglePeakHold();
+        });
+
+        // Insert before meter-toggle
+        const meterToggle = document.getElementById('meter-toggle');
+        if (meterToggle) {
+            header.insertBefore(btn, meterToggle);
+        } else {
+            header.appendChild(btn);
+        }
+    }
+
+    togglePeakHold() {
+        this.peakHoldEnabled = !this.peakHoldEnabled;
+        const btn = document.getElementById('peak-hold-toggle');
+        if (btn) {
+            if (this.peakHoldEnabled) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+                // Clear all peaks
+                this.peakValues.fill(0);
+                this.peakTimers.forEach(t => t && clearTimeout(t));
+                this.peakTimers.fill(null);
+            }
+        }
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify({ type: 'setUIOption', key: 'peakHold', value: this.peakHoldEnabled }));
+        }
+    }
+
     getEventCoords(e) {
         if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
         if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -191,6 +241,7 @@ class ProView {
                     </div>
                     <div class="meter-track">
                         <div class="meter-fill" id="meter-${i}"></div>
+                        <div class="peak-hold-dot" id="peak-${i}"></div>
                     </div>
                 </div>
                 <div class="db-val-box" id="db-${i}"></div>
@@ -238,6 +289,53 @@ class ProView {
                 const pct = this.getMeterPct(val);
                 // Inverted: curtain height = 100% - signal level
                 el.style.height = `${100 - pct}%`;
+
+                // Peak Hold Logic
+                if (this.peakHoldEnabled) {
+                    const peakId = `peak-${i}`;
+                    if (!this.elCache[peakId]) this.elCache[peakId] = document.getElementById(peakId);
+                    const peakEl = this.elCache[peakId];
+
+                    if (val > this.peakValues[i]) {
+                        this.peakValues[i] = val;
+
+                        // Clear existing timer
+                        if (this.peakTimers[i]) {
+                            clearTimeout(this.peakTimers[i]);
+                        }
+
+                        // Set new timer (2 second hold)
+                        this.peakTimers[i] = setTimeout(() => {
+                            this.peakValues[i] = 0;
+                            if (peakEl) peakEl.style.display = 'none';
+                        }, 2000);
+                    }
+
+                    // Render peak dot
+                    if (peakEl && this.peakValues[i] > 0) {
+                        const peakPct = this.getMeterPct(this.peakValues[i]);
+                        peakEl.style.bottom = `${peakPct}%`;
+                        peakEl.style.display = 'block';
+
+                        // Color based on peak level (match gradient zones)
+                        const peakVal = this.peakValues[i];
+                        let peakColor;
+                        if (peakVal >= 29) {
+                            peakColor = '#ff3b30'; // Red
+                        } else if (peakVal >= 24) {
+                            peakColor = '#ffcc00'; // Orange
+                        } else {
+                            peakColor = '#34c759'; // Green
+                        }
+                        peakEl.style.background = peakColor;
+                    }
+                } else {
+                    // Hide peak when disabled
+                    const peakId = `peak-${i}`;
+                    if (!this.elCache[peakId]) this.elCache[peakId] = document.getElementById(peakId);
+                    const peakEl = this.elCache[peakId];
+                    if (peakEl) peakEl.style.display = 'none';
+                }
 
                 // Update dB Box - OPTIMIZED to avoid DOM Reads
                 if (dbEl) {
