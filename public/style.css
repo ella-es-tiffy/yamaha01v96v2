@@ -597,10 +597,10 @@ body.mode-lock-active #main-app-content {
     padding: 40px;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(30px) translateZ(0);
-    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1),
-        opacity 0.4s cubic-bezier(0.19, 1, 0.22, 1),
-        visibility 0.4s;
+    transform: translateY(10px) translateZ(0);
+    transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+        opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+        visibility 0.3s;
     transition-delay: 0s;
     color: #fff;
     will-change: opacity, transform;
@@ -865,6 +865,7 @@ input[type=range]::-webkit-slider-thumb {
     opacity: 1;
     display: flex;
 }
+
 .unlock-surface {
     background: rgba(20, 20, 20, 0.85);
     border: 1px solid #444;
@@ -872,7 +873,7 @@ input[type=range]::-webkit-slider-thumb {
     border-radius: 12px;
     text-align: center;
     cursor: pointer;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
     transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
     will-change: transform;
 }

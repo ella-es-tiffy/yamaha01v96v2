@@ -132,7 +132,7 @@
             <div class="dev-card">
                 <div class="dev-card-title">📊 Metering</div>
                 <div class="dev-group">
-                    <label>REFRESH RATE (POLL)</label>
+                    <label>METER REFRESH RATE</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="range" id="meter-rate-slider" min="1" max="60" value="8" style="flex: 1;">
                         <span id="meter-rate-val"
@@ -140,8 +140,9 @@
                     </div>
                     <div
                         style="background: rgba(255,100,0,0.1); border-left: 2px solid #ff4400; padding: 6px; margin-top: 8px; border-radius: 4px;">
-                        <p style="font-size: 0.45rem; color: #aaa; line-height: 1.2;">⚠️ Zu schnelle Polls
-                            können MIDI abstürzen lassen.</p>
+                        <p style="font-size: 0.45rem; color: #aaa; line-height: 1.2;">⚠️ Zu schnelle Polls können
+                            MIDI-Feedback am Pult stoppen. Das Pult bleibt steuerbar, aber Meter-Daten werden nicht mehr
+                            gesendet.</p>
                     </div>
                 </div>
 
@@ -153,6 +154,8 @@
                         <span id="meter-broadcast-val"
                             style="width: 45px; font-family: monospace; color: var(--accent);">150ms</span>
                     </div>
+                    <p style="font-size: 0.45rem; color: #666; margin-top: 5px;">Update-Frequenz zum Browser. Höhere
+                        Werte sparen CPU/Netzwerk.</p>
                 </div>
 
                 <div class="dev-group">
@@ -162,6 +165,8 @@
                         <span id="meter-offset-val"
                             style="width: 30px; font-family: monospace; color: var(--accent);">0</span>
                     </div>
+                    <p style="font-size: 0.45rem; color: #666; margin-top: 5px;">Filtert Hintergrundrauschen unterhalb
+                        dieses Werts aus.</p>
                 </div>
             </div>
 
