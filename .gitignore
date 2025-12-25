@@ -5,3 +5,5 @@ agents.md
 .env
 !agents.md
 .venv/
+dev/startup_log.txt
+data/*.db

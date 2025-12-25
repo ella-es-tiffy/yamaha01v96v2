@@ -194,9 +194,9 @@ class YamahaTouchRemote {
 
             strip.innerHTML = `
                 <div class="ch-num">${i}</div>
-                <div class="fx-button ${chState?.fxOn ? 'active' : ''}" id="fx-btn-${i}" data-ch="${i}">FX</div>
-                <div class="on-button ${chState?.mute ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${chState?.mute ? 'MUTE' : 'ON'}</div>
-                <div class="eq-button ${chState?.eqOn ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
+                <div class="fx-button ${(chState && chState.fxOn) ? 'active' : ''}" id="fx-btn-${i}" data-ch="${i}">FX</div>
+                <div class="on-button ${(chState && chState.mute) ? 'muted' : 'active'}" id="btn-${i}" data-ch="${i}">${(chState && chState.mute) ? 'MUTE' : 'ON'}</div>
+                <div class="eq-button ${(chState && chState.eqOn) ? 'active' : ''}" id="eq-btn-${i}" data-ch="${i}">EQ</div>
                 <button class="sel-button ${this.selectedChannel === i ? 'active' : ''}" id="sel-${i}" data-ch="${i}">SEL</button>
                 <div class="fader-addr" style="${this.debugUI ? '' : 'display:none;'}">1C 00 ${(i - 1).toString(16).toUpperCase().padStart(2, '0')}</div>
                 <div class="pan-area">
@@ -212,13 +212,13 @@ class YamahaTouchRemote {
                     <div class="fader-track"><div class="fader-thumb" id="thumb-${i}"></div></div>
                     <div class="meter-bar"><div class="meter-fill" id="meter-${i}"></div></div>
                 </div>
-                <div class="db-val" id="val-${i}">${chState?.fader || 0}</div>
-                <div class="ch-name-box" id="name-box-${i}" data-ch="${i}">${chState?.name || `CH${i}`}</div>
+                <div class="db-val" id="val-${i}">${(chState && chState.fader) || 0}</div>
+                <div class="ch-name-box" id="name-box-${i}" data-ch="${i}">${(chState && chState.name) || `CH${i}`}</div>
             `;
             mixer.appendChild(strip);
-            this.updateFaderUI(i, chState?.fader || 0);
-            this.updatePanUI(i, chState?.pan ?? 64);
-            this.updateMeterUI(i, chState?.meter || 0);
+            this.updateFaderUI(i, (chState && chState.fader) || 0);
+            this.updatePanUI(i, (chState && chState.pan !== undefined) ? chState.pan : 64);
+            this.updateMeterUI(i, (chState && chState.meter) || 0);
         }
         this.updateSelectionUI();
     }
@@ -350,32 +350,40 @@ class YamahaTouchRemote {
         const presetLabel = innerGrid.querySelector('#val-eq-preset');
 
 
-        presetLabel?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.openPresetBrowser();
-        });
+        if (presetLabel) {
+            presetLabel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openPresetBrowser();
+            });
+        }
 
-        innerGrid.querySelector('#btn-lib-prev')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (this.currentPresetIdx > 0) {
-                this.currentPresetIdx--;
-                this.updatePresetDisplay();
-                const presetId = this.currentPresetIdx + 1;
-                console.log(`[UI] Recalling Preset ${presetId} (idx ${this.currentPresetIdx})`);
-                this.send('recallEQ', { channel: this.selectedChannel, preset: presetId });
-            }
-        });
+        const btnLibPrev = innerGrid.querySelector('#btn-lib-prev');
+        if (btnLibPrev) {
+            btnLibPrev.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.currentPresetIdx > 0) {
+                    this.currentPresetIdx--;
+                    this.updatePresetDisplay();
+                    const presetId = this.currentPresetIdx + 1;
+                    console.log(`[UI] Recalling Preset ${presetId} (idx ${this.currentPresetIdx})`);
+                    this.send('recallEQ', { channel: this.selectedChannel, preset: presetId });
+                }
+            });
+        }
 
-        innerGrid.querySelector('#btn-lib-next')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (this.currentPresetIdx < 127) {
-                this.currentPresetIdx++;
-                this.updatePresetDisplay();
-                const presetId = this.currentPresetIdx + 1;
-                console.log(`[UI] Recalling Preset ${presetId} (idx ${this.currentPresetIdx})`);
-                this.send('recallEQ', { channel: this.selectedChannel, preset: presetId });
-            }
-        });
+        const btnLibNext = innerGrid.querySelector('#btn-lib-next');
+        if (btnLibNext) {
+            btnLibNext.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.currentPresetIdx < 127) {
+                    this.currentPresetIdx++;
+                    this.updatePresetDisplay();
+                    const presetId = this.currentPresetIdx + 1;
+                    console.log(`[UI] Recalling Preset ${presetId} (idx ${this.currentPresetIdx})`);
+                    this.send('recallEQ', { channel: this.selectedChannel, preset: presetId });
+                }
+            });
+        }
 
         globalRow.appendChild(innerGrid);
         globalRow.appendChild(cover);
@@ -492,7 +500,7 @@ class YamahaTouchRemote {
                 const chIdx = ch - 1;
 
                 // Toggle state locally
-                const currentState = this.state.channels[chIdx]?.eqOn || false;
+                const currentState = (this.state.channels[chIdx] && this.state.channels[chIdx].eqOn) || false;
                 const newState = !currentState;
 
                 if (this.state.channels[chIdx]) {
@@ -511,7 +519,7 @@ class YamahaTouchRemote {
                     currentState = this.state.master.fxOn || false;
                     this.state.master.fxOn = !currentState;
                 } else {
-                    currentState = this.state.channels[chIdx]?.fxOn || false;
+                    currentState = (this.state.channels[chIdx] && this.state.channels[chIdx].fxOn) || false;
                     this.state.channels[chIdx].fxOn = !currentState;
                 }
 
@@ -563,92 +571,117 @@ class YamahaTouchRemote {
         });
 
 
-        document.getElementById('debug-ui-btn')?.addEventListener('click', (e) => {
-            this.debugUI = !this.debugUI;
-            e.target.style.background = this.debugUI ? 'var(--accent)' : '#333';
-            e.target.style.color = this.debugUI ? '#000' : '#fff';
+        const debugUiBtn = document.getElementById('debug-ui-btn');
+        if (debugUiBtn) {
+            debugUiBtn.addEventListener('click', (e) => {
+                this.debugUI = !this.debugUI;
+                e.target.style.background = this.debugUI ? 'var(--accent)' : '#333';
+                e.target.style.color = this.debugUI ? '#000' : '#fff';
 
-            // Toggle all fader addresses
-            this.renderMixer();
-            this.renderEQ();
+                this.renderMixer();
+                this.renderEQ();
 
-            const masterAddr = document.getElementById('addr-master');
-            if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
+                const masterAddr = document.getElementById('addr-master');
+                if (masterAddr) masterAddr.style.display = this.debugUI ? 'block' : 'none';
 
-            // TOGGLE DEV PANEL
-            const devPanel = document.getElementById('dev-panel');
-            if (devPanel) devPanel.style.display = this.debugUI ? 'flex' : 'none';
-        });
+                const devPanel = document.getElementById('dev-panel');
+                if (devPanel) devPanel.style.display = this.debugUI ? 'flex' : 'none';
+            });
+        }
 
-        // Developer Settings Handlers
-        document.getElementById('meter-offset-slider')?.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            this.send('setMeterOffset', { value: val });
-        });
+        const meterOffsetSlider = document.getElementById('meter-offset-slider');
+        if (meterOffsetSlider) {
+            meterOffsetSlider.addEventListener('change', (e) => {
+                const val = parseInt(e.target.value);
+                this.send('setMeterOffset', { value: val });
+            });
 
-        document.getElementById('meter-offset-slider')?.addEventListener('input', (e) => {
-            const val = parseInt(e.target.value);
-            this.meterOffset = val;
-            document.getElementById('meter-offset-val').innerText = val;
-        });
+            meterOffsetSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                this.meterOffset = val;
+                const offsetVal = document.getElementById('meter-offset-val');
+                if (offsetVal) offsetVal.innerText = val;
+            });
+        }
 
-        document.getElementById('meter-rate-slider')?.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            this.send('setMeterInterval', { value: val * 1000 });
-        });
+        const meterRateSlider = document.getElementById('meter-rate-slider');
+        if (meterRateSlider) {
+            meterRateSlider.addEventListener('change', (e) => {
+                const val = parseInt(e.target.value);
+                this.send('setMeterInterval', { value: val * 1000 });
+            });
 
-        document.getElementById('meter-rate-slider')?.addEventListener('input', (e) => {
-            document.getElementById('meter-rate-val').innerText = e.target.value + 's';
-        });
+            meterRateSlider.addEventListener('input', (e) => {
+                const rateVal = document.getElementById('meter-rate-val');
+                if (rateVal) rateVal.innerText = e.target.value + 's';
+            });
+        }
 
-        document.getElementById('debug-btn')?.addEventListener('click', () => {
-            const l = document.getElementById('debug-log');
-            if (l) l.style.display = l.style.display === 'none' ? 'block' : 'none';
-        });
+        const debugBtn = document.getElementById('debug-btn');
+        if (debugBtn) {
+            debugBtn.addEventListener('click', () => {
+                const l = document.getElementById('debug-log');
+                if (l) l.style.display = l.style.display === 'none' ? 'block' : 'none';
+            });
+        }
 
-        document.getElementById('refresh-meters')?.addEventListener('click', () => {
-            console.log('🔄 Manually requesting meters...');
-            this.send('sync', { type: 'meters' }); // Specific meter sync if supported, otherwise full
-        });
+        const refreshMeters = document.getElementById('refresh-meters');
+        if (refreshMeters) {
+            refreshMeters.addEventListener('click', () => {
+                console.log('🔄 Manually requesting meters...');
+                this.send('sync', { type: 'meters' });
+            });
+        }
 
-        document.getElementById('dbg-bank-meters')?.addEventListener('change', (e) => {
-            this.meterBankOnly = e.target.checked;
-            this.send('setUIOption', { key: 'bankOnlyMetering', value: e.target.checked });
-            this.triggerMeterSync();
-        });
+        const dbgBankMeters = document.getElementById('dbg-bank-meters');
+        if (dbgBankMeters) {
+            dbgBankMeters.addEventListener('change', (e) => {
+                this.meterBankOnly = e.target.checked;
+                this.send('setUIOption', { key: 'bankOnlyMetering', value: e.target.checked });
+                this.triggerMeterSync();
+            });
+        }
 
-        document.getElementById('chk-auto-close-safety')?.addEventListener('change', (e) => {
-            this.autoCloseSafety = e.target.checked;
-            this.send('setUIOption', { key: 'autoCloseSafety', value: e.target.checked });
-        });
+        const autoCloseSafety = document.getElementById('chk-auto-close-safety');
+        if (autoCloseSafety) {
+            autoCloseSafety.addEventListener('change', (e) => {
+                this.autoCloseSafety = e.target.checked;
+                this.send('setUIOption', { key: 'autoCloseSafety', value: e.target.checked });
+            });
+        }
 
-        document.getElementById('copy-debug')?.addEventListener('click', () => {
-            const logEl = document.getElementById('debug-log');
-            const entries = Array.from(logEl.querySelectorAll('div:not(:first-child)'))
-                .map(div => div.innerText.replace('> ', ''))
-                .join('\n');
+        const copyDebug = document.getElementById('copy-debug');
+        if (copyDebug) {
+            copyDebug.addEventListener('click', () => {
+                const logEl = document.getElementById('debug-log');
+                if (!logEl) return;
+                const entries = Array.from(logEl.querySelectorAll('div:not(:first-child)'))
+                    .map(div => div.innerText.replace('> ', ''))
+                    .join('\n');
 
-            // Fallback copy method for non-secure contexts (HTTP)
-            const textArea = document.createElement("textarea");
-            textArea.value = entries;
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                const btn = document.getElementById('copy-debug');
-                const oldText = btn.innerText;
-                btn.innerText = 'COPIED!';
-                setTimeout(() => btn.innerText = oldText, 2000);
-            } catch (err) { }
-            document.body.removeChild(textArea);
-        });
+                const textArea = document.createElement("textarea");
+                textArea.value = entries;
+                textArea.style.position = "fixed";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    const oldText = copyDebug.innerText;
+                    copyDebug.innerText = 'COPIED!';
+                    setTimeout(() => copyDebug.innerText = oldText, 2000);
+                } catch (err) { }
+                document.body.removeChild(textArea);
+            });
+        }
 
-        document.getElementById('scan-presets-btn')?.addEventListener('click', () => {
-            console.log('[UI] Starting preset scan...');
-            this.send('scanPresets', {});
-        });
+        const scanBtn = document.getElementById('scan-presets-btn');
+        if (scanBtn) {
+            scanBtn.addEventListener('click', () => {
+                console.log('[UI] Starting preset scan...');
+                this.send('scanPresets', {});
+            });
+        }
 
         // Encoder Delegation
         document.getElementById('eq-area').addEventListener('pointerdown', (e) => {
@@ -705,16 +738,18 @@ class YamahaTouchRemote {
         // Global UI Lock Logic
         const lockBtn = document.getElementById('lock-ui-btn');
         const lockOverlay = document.getElementById('global-lock-overlay');
-        const unlockSurface = lockOverlay?.querySelector('.unlock-surface');
+        const unlockSurface = lockOverlay ? lockOverlay.querySelector('.unlock-surface') : null;
 
         if (lockBtn && lockOverlay) {
             lockBtn.addEventListener('click', () => {
                 lockOverlay.classList.add('active');
             });
 
-            unlockSurface?.addEventListener('click', () => {
-                lockOverlay.classList.remove('active');
-            });
+            if (unlockSurface) {
+                unlockSurface.addEventListener('click', () => {
+                    lockOverlay.classList.remove('active');
+                });
+            }
         }
     }
 
@@ -1126,7 +1161,7 @@ class YamahaTouchRemote {
                     this.state.eqPresets = newState.eqPresets;
                     this.updatePresetDisplay();
                     const Overlay = document.getElementById('preset-browser-overlay');
-                    if (Overlay?.classList.contains('active')) {
+                    if (Overlay && Overlay.classList.contains('active')) {
                         this.openPresetBrowser(); // Re-render list live
                     }
                 }
