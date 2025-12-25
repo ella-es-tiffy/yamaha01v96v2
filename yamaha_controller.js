@@ -192,6 +192,9 @@ class Yamaha01V96Controller {
         // METER DATA PARSING (Universal for varied ranges)
         if (message[0] === 0xF0 && message[1] === 0x43 && message[5] === 0x21) {
             const startIdx = message[8]; // Extract starting channel from packet
+            // Debug: Check packet size vs expected 32 channels (approx 75 bytes)
+            // console.log(`[METER RAW] Len: ${message.length} Start: ${startIdx}`);
+
             const dataLen = (message.length - 11) / 2; // Data is between address and F7
 
             for (let i = 0; i < dataLen; i++) {
