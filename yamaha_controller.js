@@ -14,7 +14,7 @@ class Yamaha01V96Controller {
         this.connected = false;
         this.onStateChange = null;
         this.onRawMidi = null;
-        this.meterConfig = { ms: 8000, start: 0, count: 32 };
+        this.meterConfig = { ms: 150, start: 0, count: 32 }; // 150ms = ~6.7 updates/sec
 
         // Initialize helper modules
         this.eqPresets = new EQPresetManager(this.output);
@@ -127,7 +127,7 @@ class Yamaha01V96Controller {
     }
 
     setMeterInterval(ms, range) {
-        const safeMs = ms ? Math.max(1000, ms) : this.meterConfig.ms;
+        const safeMs = ms ? Math.max(100, Math.min(500, ms)) : this.meterConfig.ms; // 100-500ms range
         const start = range ? range.start : this.meterConfig.start;
         const count = range ? range.count : this.meterConfig.count;
 

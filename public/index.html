@@ -126,17 +126,17 @@
                 <div class="dev-group">
                     <label>METER REFRESH RATE</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="range" id="meter-rate-slider" min="1" max="60" value="8" style="flex: 1;">
+                        <input type="range" id="meter-rate-slider" min="100" max="500" value="150" step="10"
+                            style="flex: 1;">
                         <span id="meter-rate-val"
-                            style="width: 40px; font-family: monospace; color: var(--accent);">8s</span>
+                            style="width: 55px; font-family: monospace; color: var(--accent);">150ms</span>
                     </div>
                     <div
                         style="background: rgba(255,100,0,0.1); border-left: 2px solid #ff4400; padding: 6px; margin-top: 8px; border-radius: 0 4px 4px 0;">
                         <p style="font-size: 0.5rem; color: #ff8800; font-weight: bold; margin-bottom: 2px;">⚠️ WARNUNG:
                         </p>
-                        <p style="font-size: 0.45rem; color: #aaa; line-height: 1.2;">Zu schnelle Intervalle können den
-                            MIDI-Stream des Pults zum Absturz bringen. Das Pult bleibt steuerbar, sendet aber keine
-                            Rückmeldungen mehr. In diesem Fall ist ein Neustart des Pults erforderlich.</p>
+                        <p style="font-size: 0.45rem; color: #aaa; line-height: 1.2;">Intervalle unter 100ms können den
+                            MIDI-Stream des Pults überlasten. Empfohlen: 150-200ms für beste Stabilität.</p>
                     </div>
                 </div>
 

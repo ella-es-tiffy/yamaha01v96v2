@@ -593,12 +593,12 @@ class YamahaTouchRemote {
         });
 
         document.getElementById('meter-rate-slider')?.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            this.send('setMeterInterval', { value: val * 1000 });
+            const val = parseInt(e.target.value); // Already in milliseconds
+            this.send('setMeterInterval', { value: val });
         });
 
         document.getElementById('meter-rate-slider')?.addEventListener('input', (e) => {
-            document.getElementById('meter-rate-val').innerText = e.target.value + 's';
+            document.getElementById('meter-rate-val').innerText = e.target.value + 'ms';
         });
 
         document.getElementById('debug-btn')?.addEventListener('click', () => {
@@ -1116,10 +1116,10 @@ class YamahaTouchRemote {
                     }
 
                     const rateSlider = document.getElementById('meter-rate-slider');
-                    if (rateSlider) {
-                        const seconds = newState.settings.meterInterval / 1000;
-                        rateSlider.value = seconds;
-                        document.getElementById('meter-rate-val').innerText = seconds + 's';
+                    if (rateSlider && newState.settings.meterInterval) {
+                        const ms = newState.settings.meterInterval; // Already in milliseconds
+                        rateSlider.value = ms;
+                        document.getElementById('meter-rate-val').innerText = ms + 'ms';
                     }
 
                     const bankMetersChk = document.getElementById('dbg-bank-meters');
