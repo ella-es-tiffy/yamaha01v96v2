@@ -65,8 +65,20 @@ class ProView {
             const strip = document.createElement('div');
             strip.className = 'bridge-strip';
             strip.innerHTML = `
-                <div class="meter-track">
-                    <div class="meter-fill" id="meter-${i}"></div>
+                <div class="meter-wrapper">
+                    <div class="meter-tick-marks">
+                        <div class="tick" style="top:0%"></div>
+                        <div class="tick" style="top:15%"></div>
+                        <div class="tick long" style="top:25%"></div> <!-- 0dB -->
+                        <div class="tick" style="top:35%"></div>
+                        <div class="tick" style="top:45%"></div>
+                        <div class="tick" style="top:55%"></div>
+                        <div class="tick" style="top:65%"></div>
+                        <div class="tick" style="top:80%"></div>
+                    </div>
+                    <div class="meter-track">
+                        <div class="meter-fill" id="meter-${i}"></div>
+                    </div>
                 </div>
                 <div class="strip-label" id="label-${i}">${i}</div>
             `;
