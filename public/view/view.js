@@ -7,14 +7,14 @@
  */
 class ProView {
     constructor() {
-        this.wsUrl = `ws://${window.location.hostname}:3007`;
+        this.wsUrl = `ws://${window.location.hostname}:3007?client=view`;
         this.socket = null;
         this.elCache = {};
         this.updateQueue = new Set();
 
         this.currentMidi = 64;
         this.activeKnob = false;
-        this.toggleState = false;
+        this.isMuted = false;
 
         this.init();
     }
@@ -49,11 +49,17 @@ class ProView {
 
         this.socket.onmessage = (msg) => {
             const data = JSON.parse(msg.data);
-            if (data.type === 'meters') {
-                this.updateMeters(data.data.channels);
-            } else if (data.type === 'state') {
-                // Sync Ch 2 Mute State back to Toggle
-                const ch2 = data.data.channels[1]; // Ch 2 is index 1
+
+            // Handle Legacy Dialect from Server
+            const t = data.t || data.type;
+            const c = data.c || data.channel;
+            const v = (data.v !== undefined) ? data.v : data.value;
+
+            if (t === 'me' || t === 'meters') {
+                this.updateMeters(data.d || data.data.channels);
+            } else if (t === 'state') {
+                // Initial state is still verbose for now
+                const ch2 = data.data.channels[1];
                 if (ch2 && ch2.mute !== undefined) {
                     this.isMuted = ch2.mute;
                     const btn = document.getElementById('test-toggle');
@@ -63,16 +69,14 @@ class ProView {
                         btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
                     }
                 }
-            } else if (data.type === 'reload') {
+            } else if (t === 'r' || t === 'reload') {
                 console.log('[VIEW] Auto-reloading due to file change...');
                 location.reload();
-            } else if (data.type === 'setFader') {
-                // Future: Update specific fader UI
-                console.log('[VIEW] Lightweight Fader Sync:', data.channel, data.value);
-            } else if (data.type === 'setMute') {
-                console.log('[VIEW] Sync Mute:', data.channel, data.value);
-                if (parseInt(data.channel) === 2) {
-                    this.isMuted = data.value;
+            } else if (t === 'f') { // setFader
+                console.log('[VIEW] Sync Fader:', c, v);
+            } else if (t === 'm') { // setMute
+                if (parseInt(c) === 2) {
+                    this.isMuted = v;
                     const btn = document.getElementById('test-toggle');
                     if (btn) {
                         btn.classList.toggle('active', !this.isMuted);
@@ -80,9 +84,9 @@ class ProView {
                         btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
                     }
                 }
-            } else if (data.type === 'setPan') {
-                if (parseInt(data.channel) === 1) {
-                    this.currentMidi = data.value;
+            } else if (t === 'p') { // setPan
+                if (parseInt(c) === 1) {
+                    this.currentMidi = v;
                     this.updateQueue.add('test-knob');
                 }
             }
@@ -131,10 +135,11 @@ class ProView {
                     this.currentMidi = val;
                     this.updateQueue.add('test-knob');
                     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                        // Send in Legacy Dialect
                         this.socket.send(JSON.stringify({
-                            type: 'setPan',
-                            channel: 1,
-                            value: val
+                            t: 'p',
+                            c: 1,
+                            v: val
                         }));
                     }
                 }
@@ -161,12 +166,12 @@ class ProView {
             if (e.type === 'touchstart') e.preventDefault();
             this.isMuted = !this.isMuted;
 
-            // Send to Server: Toggle Mute for Channel 2
+            // Send in Legacy Dialect
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                 this.socket.send(JSON.stringify({
-                    type: 'setMute',
-                    channel: 2,
-                    value: this.isMuted
+                    t: 'm',
+                    c: 2,
+                    v: this.isMuted
                 }));
             }
 
@@ -174,7 +179,6 @@ class ProView {
             btn.classList.toggle('active', !this.isMuted);
             btn.classList.toggle('muted', this.isMuted);
             btn.innerText = this.isMuted ? 'MUTED' : 'ON (CH2)';
-            console.log('[TOGGLE] CH2 Mute set to:', this.isMuted);
         };
 
         btn.addEventListener('touchstart', onToggle, { passive: false });

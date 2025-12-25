@@ -36,14 +36,33 @@ if (yamaha.connect()) {
 
 const wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
 
-wss.on('connection', (ws) => {
-    console.log('[WS] Client connected, sending initial state. Ch1 eqOn:', yamaha.state.channels[0].eqOn);
+wss.on('connection', (ws, req) => {
+    // Determine client type from URL (e.g., ws://host:port?client=view)
+    const params = new URLSearchParams(req.url.split('?')[1]);
+    ws.clientType = params.get('client') === 'view' ? 'legacy' : 'modern';
+
+    console.log(`[WS] Client connected (${ws.clientType}). Sending initial state.`);
+
+    // Initial state is always full for now, but we could trim it for legacy if needed
     ws.send(JSON.stringify({ type: 'state', data: yamaha.state }));
 
     ws.on('message', (message) => {
         try {
-            const data = JSON.parse(message);
-            console.log('WS RX:', data.type, data.channel, data.value);
+            let data = JSON.parse(message);
+
+            // TRANSLATION: Legacy (View) -> Modern (Internal)
+            if (ws.clientType === 'legacy' && data.t) {
+                const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ' };
+                data = {
+                    type: legacyMap[data.t] || data.t,
+                    channel: data.c,
+                    value: data.v,
+                    band: data.b,
+                    param: data.pa
+                };
+            }
+
+            console.log(`WS RX (${ws.clientType}):`, data.type, data.channel, data.value);
 
             // Execute command on Yamaha controller
             if (data.type === 'setFader') yamaha.setFader(data.channel, data.value);
@@ -70,9 +89,8 @@ wss.on('connection', (ws) => {
                 });
             }
 
-            // LIGHTWEIGHT BROADCAST: Send this change to all OTHER clients immediately
+            // LIGHTWEIGHT BROADCAST: Send this change to all OTHER clients
             if (data.type.startsWith('set')) {
-                console.log(`[WS] Broadcasting ${data.type} to other clients`);
                 broadcast(data, ws);
             }
 
@@ -89,10 +107,34 @@ function formatMarkdown(md) {
 }
 
 function broadcast(data, skipWs) {
-    const msg = JSON.stringify(data);
+    const modernMsg = JSON.stringify(data);
+
+    // Pre-calculate Legacy version
+    let legacyMsg = null;
+    if (data.type === 'meters') {
+        legacyMsg = JSON.stringify({ t: 'me', d: data.data });
+    } else if (data.type === 'reload') {
+        legacyMsg = JSON.stringify({ t: 'r' });
+    } else {
+        const revMap = { 'setFader': 'f', 'setMute': 'm', 'setPan': 'p', 'setEQ': 'e' };
+        if (revMap[data.type]) {
+            legacyMsg = JSON.stringify({
+                t: revMap[data.type],
+                c: data.channel,
+                v: data.value,
+                b: data.band,
+                pa: data.param
+            });
+        }
+    }
+
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN && client !== skipWs) {
-            client.send(msg);
+            if (client.clientType === 'legacy' && legacyMsg) {
+                client.send(legacyMsg);
+            } else {
+                client.send(modernMsg);
+            }
         }
     });
 }
