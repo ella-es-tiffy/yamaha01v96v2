@@ -49,11 +49,15 @@ ProView.prototype.getIOSVersion = function () {
 };
 
 ProView.prototype.sendLock = function (locked) {
-    if (!this.socket || this.socket.readyState !== 1) return; // 1 = OPEN
-    this.socket.send(JSON.stringify({
-        t: 'l',
-        v: locked
-    }));
+    // Legacy: Use HTTP POST instead of WS to avoid lag/drops
+    // Fallback to fetch (available in iOS 12)
+    try {
+        fetch('/api/lock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locked: locked })
+        }).catch(function (e) { console.error('Lock Post Error:', e); });
+    } catch (e) { console.error('Fetch Error:', e); }
 };
 
 ProView.prototype.init = function () {
@@ -66,6 +70,25 @@ ProView.prototype.init = function () {
     this.setupToggle();
     this.setupLockUI();
     this.startRaf();
+    this.startLockPolling();
+};
+
+ProView.prototype.startLockPolling = function () {
+    var self = this;
+    // Ultra Lightweight Polling (1x/sec) as requested
+    setInterval(function () {
+        fetch('/api/lock')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                // Only update if changed to avoid thrashing
+                if (data.locked !== self.settings.uiLocked) {
+                    console.log('[Poll] Lock State Changed:', data.locked);
+                    self.settings.uiLocked = data.locked;
+                    self.syncLockState();
+                }
+            })
+            .catch(function (e) { /* ignore poll errors */ });
+    }, 1000);
 };
 
 ProView.prototype.setupLockUI = function () {

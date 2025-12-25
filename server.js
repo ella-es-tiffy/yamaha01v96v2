@@ -171,6 +171,33 @@ class YamahaServer {
 
     setupHttpServer() {
         this.server = http.createServer((req, res) => {
+            // API: Lock Status (Lightweight Polling for Legacy)
+            if (req.url === '/api/lock') {
+                if (req.method === 'GET') {
+                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ locked: !!this.yamaha.state.settings.uiLocked }));
+                    return;
+                } else if (req.method === 'POST') {
+                    let body = '';
+                    req.on('data', chunk => { body += chunk.toString(); });
+                    req.on('end', () => {
+                        try {
+                            const params = JSON.parse(body);
+                            // Update State
+                            this.yamaha.setUIOption('uiLocked', params.locked);
+                            // Broadcast change to all WS clients (so PT sees it)
+                            this.broadcast({ type: 'setUILock', value: params.locked });
+
+                            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                            res.end(JSON.stringify({ success: true, locked: params.locked }));
+                        } catch (e) {
+                            res.writeHead(400); res.end('Invalid JSON');
+                        }
+                    });
+                    return;
+                }
+            }
+
             let filePath = (req.url.startsWith('/dev/'))
                 ? path.join(__dirname, 'dev', req.url.replace('/dev/', ''))
                 : path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
