@@ -57,10 +57,17 @@ class YamahaTouchRemote {
 
     showNotification(message, type = 'error', duration = 3000) {
         const notif = document.getElementById('custom-notification');
+        if (!notif) return;
         notif.textContent = message;
         notif.className = `custom-notification ${type}`;
         notif.classList.add('active');
         setTimeout(() => notif.classList.remove('active'), duration);
+    }
+
+    getEventCoords(e) {
+        if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+        return { x: e.clientX, y: e.clientY };
     }
 
     async showConfirm(title, message) {
@@ -429,8 +436,9 @@ class YamahaTouchRemote {
 
     setupHandlers() {
         const handlePointer = (e, targetArea, chId) => {
+            const coords = this.getEventCoords(e);
             const rect = targetArea.getBoundingClientRect();
-            const constrainedY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+            const constrainedY = Math.max(0, Math.min(rect.height, coords.y - rect.top));
             const value = Math.round((1 - (constrainedY / rect.height)) * 1023);
             this.updateFaderUI(chId, value);
 
@@ -468,100 +476,122 @@ class YamahaTouchRemote {
         });
 
         // Fader & Button Delegation (Mixer & Master)
-        document.querySelector('.mixer-layout-wrapper').addEventListener('pointerdown', (e) => {
-            const thumb = e.target.closest('.fader-thumb');
-            const onBtn = e.target.closest('.on-button');
-            const selBtn = e.target.closest('.sel-button');
+        const mixerWrapper = document.querySelector('.mixer-layout-wrapper');
+        const startEvents = window.PointerEvent ? ['pointerdown'] : ['mousedown', 'touchstart'];
+        const moveEvents = window.PointerEvent ? ['pointermove'] : ['mousemove', 'touchmove'];
+        const upEvents = window.PointerEvent ? ['pointerup'] : ['mouseup', 'touchend', 'touchcancel'];
 
-            if (thumb) {
-                const area = thumb.closest('.fader-area');
-                const chId = area.dataset.ch;
-                this.activeFader = chId; // Mark this fader as active
-                thumb.setPointerCapture(e.pointerId);
-                thumb.classList.add('dragging');
-                handlePointer(e, area, chId);
-                const onMove = (me) => { if (thumb.hasPointerCapture(me.pointerId)) handlePointer(me, area, chId); };
-                const onUp = () => {
-                    this.activeFader = null; // Clear active fader
-                    thumb.releasePointerCapture(e.pointerId);
-                    thumb.classList.remove('dragging');
-                    thumb.removeEventListener('pointermove', onMove);
-                };
-                thumb.addEventListener('pointermove', onMove);
-                thumb.addEventListener('pointerup', onUp, { once: true });
-            } else if (onBtn) {
-                const ch = onBtn.dataset.ch;
-                const isMuted = onBtn.classList.contains('muted');
-                this.updateMuteUI(ch, !isMuted);
-                this.send('setMute', { channel: ch, value: !isMuted });
-            } else if (e.target.closest('.eq-button')) {
-                const btn = e.target.closest('.eq-button');
-                const ch = parseInt(btn.dataset.ch);
-                const chIdx = ch - 1;
+        startEvents.forEach(evtType => {
+            mixerWrapper.addEventListener(evtType, (e) => {
+                const thumb = e.target.closest('.fader-thumb');
+                const onBtn = e.target.closest('.on-button');
+                const selBtn = e.target.closest('.sel-button');
 
-                // Toggle state locally
-                const currentState = (this.state.channels[chIdx] && this.state.channels[chIdx].eqOn) || false;
-                const newState = !currentState;
+                if (thumb) {
+                    if (e.type === 'touchstart') e.preventDefault();
+                    const area = thumb.closest('.fader-area');
+                    const chId = area.dataset.ch;
+                    this.activeFader = chId;
+                    if (thumb.setPointerCapture) thumb.setPointerCapture(e.pointerId);
+                    thumb.classList.add('dragging');
+                    handlePointer(e, area, chId);
 
-                if (this.state.channels[chIdx]) {
-                    this.state.channels[chIdx].eqOn = newState;
+                    const onMove = (me) => {
+                        if (window.PointerEvent && thumb.hasPointerCapture && !thumb.hasPointerCapture(me.pointerId)) return;
+                        handlePointer(me, area, chId);
+                    };
+
+                    const onUp = () => {
+                        this.activeFader = null;
+                        if (thumb.releasePointerCapture) thumb.releasePointerCapture(e.pointerId);
+                        thumb.classList.remove('dragging');
+                        moveEvents.forEach(m => window.removeEventListener(m, onMove));
+                        upEvents.forEach(u => window.removeEventListener(u, onUp));
+                    };
+
+                    moveEvents.forEach(m => window.addEventListener(m, onMove, { passive: false }));
+                    upEvents.forEach(u => window.addEventListener(u, onUp, { once: true }));
+                } else if (onBtn) {
+                    const ch = onBtn.dataset.ch;
+                    const isMuted = onBtn.classList.contains('muted');
+                    this.updateMuteUI(ch, !isMuted);
+                    this.send('setMute', { channel: ch, value: !isMuted });
+                } else if (e.target.closest('.eq-button')) {
+                    const btn = e.target.closest('.eq-button');
+                    const ch = parseInt(btn.dataset.ch);
+                    const chIdx = ch - 1;
+                    const currentState = (this.state.channels[chIdx] && this.state.channels[chIdx].eqOn) || false;
+                    const newState = !currentState;
+                    if (this.state.channels[chIdx]) this.state.channels[chIdx].eqOn = newState;
+                    btn.classList.toggle('active', newState);
+                    this.send('setEQOn', { channel: ch, value: newState });
+                } else if (e.target.closest('.fx-button')) {
+                    const btn = e.target.closest('.fx-button');
+                    const ch = btn.dataset.ch;
+                    const chIdx = (ch === 'master') ? 'master' : parseInt(ch) - 1;
+                    let currentState;
+                    if (chIdx === 'master') {
+                        currentState = this.state.master.fxOn || false;
+                        this.state.master.fxOn = !currentState;
+                    } else {
+                        currentState = (this.state.channels[chIdx] && this.state.channels[chIdx].fxOn) || false;
+                        this.state.channels[chIdx].fxOn = !currentState;
+                    }
+                    btn.classList.toggle('active', !currentState);
+                } else if (selBtn) {
+                    const changelog = document.getElementById('changelog-overlay');
+                    if (changelog) changelog.style.display = 'none';
+                    this.selectChannel(selBtn.dataset.ch);
                 }
-
-                btn.classList.toggle('active', newState);
-                this.send('setEQOn', { channel: ch, value: newState });
-            } else if (e.target.closest('.fx-button')) {
-                const btn = e.target.closest('.fx-button');
-                const ch = btn.dataset.ch;
-                const chIdx = (ch === 'master') ? 'master' : parseInt(ch) - 1;
-
-                let currentState;
-                if (chIdx === 'master') {
-                    currentState = this.state.master.fxOn || false;
-                    this.state.master.fxOn = !currentState;
-                } else {
-                    currentState = (this.state.channels[chIdx] && this.state.channels[chIdx].fxOn) || false;
-                    this.state.channels[chIdx].fxOn = !currentState;
-                }
-
-                btn.classList.toggle('active', !currentState);
-                // We don't have a backend command for FX yet, but we toggle the UI
-            } else if (selBtn) {
-                document.getElementById('changelog-overlay').style.display = 'none';
-                this.selectChannel(selBtn.dataset.ch);
-            }
+            }, { passive: false });
         });
 
         // Channel Strip Pan Delegation
-        document.querySelector('.mixer-layout-wrapper').addEventListener('pointerdown', (e) => {
-            const knob = e.target.closest('.pan-knob');
-            if (knob) {
-                e.preventDefault(); e.stopPropagation();
-                knob.setPointerCapture(e.pointerId);
-                const chId = knob.dataset.ch;
-                this.activeKnob = `pan-${chId}`;
-                let startY = e.clientY;
-                let startVal = this.state.channels[parseInt(chId) - 1].pan || 64;
-                const onMove = (me) => {
-                    if (this.activeKnob === `pan-${chId}`) {
-                        const delta = (startY - me.clientY) * 0.6;
-                        let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
-                        this.updatePanUI(chId, val);
-                        this.state.channels[parseInt(chId) - 1].pan = val;
-                        this.send('setPan', { channel: chId, value: val });
-                    }
-                };
-                const onUp = () => { knob.releasePointerCapture(e.pointerId); this.activeKnob = null; knob.removeEventListener('pointermove', onMove); };
-                knob.addEventListener('pointermove', onMove);
-                knob.addEventListener('pointerup', onUp, { once: true });
-            }
+        startEvents.forEach(evtType => {
+            mixerWrapper.addEventListener(evtType, (e) => {
+                const knob = e.target.closest('.pan-knob');
+                if (knob) {
+                    if (e.type === 'touchstart') e.preventDefault();
+                    e.stopPropagation();
+                    if (knob.setPointerCapture) knob.setPointerCapture(e.pointerId);
+                    const chId = knob.dataset.ch;
+                    this.activeKnob = `pan-${chId}`;
+                    const coords = this.getEventCoords(e);
+                    let startY = coords.y;
+                    let startVal = (this.state.channels[parseInt(chId) - 1] && this.state.channels[parseInt(chId) - 1].pan) || 64;
+                    const onMove = (me) => {
+                        const mCoords = this.getEventCoords(me);
+                        if (this.activeKnob === `pan-${chId}`) {
+                            const delta = (startY - mCoords.y) * 0.6;
+                            let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
+                            this.updatePanUI(chId, val);
+                            if (this.state.channels[parseInt(chId) - 1]) this.state.channels[parseInt(chId) - 1].pan = val;
+                            this.send('setPan', { channel: chId, value: val });
+                        }
+                    };
+                    const onUp = () => {
+                        if (knob.releasePointerCapture) knob.releasePointerCapture(e.pointerId);
+                        this.activeKnob = null;
+                        moveEvents.forEach(m => window.removeEventListener(m, onMove));
+                        upEvents.forEach(u => window.removeEventListener(u, onUp));
+                    };
+                    moveEvents.forEach(m => window.addEventListener(m, onMove, { passive: false }));
+                    upEvents.forEach(u => window.addEventListener(u, onUp, { once: true }));
+                }
+            }, { passive: false });
         });
 
-        document.getElementById('ver-btn')?.addEventListener('click', () => {
-            const overlay = document.getElementById('changelog-overlay');
-            const isVisible = overlay.style.display === 'block';
-            overlay.style.display = isVisible ? 'none' : 'block';
-            if (!isVisible) this.send('getChangelog', {});
-        });
+        const verBtn = document.getElementById('ver-btn');
+        if (verBtn) {
+            verBtn.addEventListener('click', () => {
+                const overlay = document.getElementById('changelog-overlay');
+                if (overlay) {
+                    const isVisible = overlay.style.display === 'block';
+                    overlay.style.display = isVisible ? 'none' : 'block';
+                    if (!isVisible) this.send('getChangelog', {});
+                }
+            });
+        }
 
         document.getElementById('sync-btn').addEventListener('click', (e) => {
             const btn = e.target;
@@ -683,27 +713,38 @@ class YamahaTouchRemote {
             });
         }
 
-        // Encoder Delegation
-        document.getElementById('eq-area').addEventListener('pointerdown', (e) => {
-            const knob = e.target.closest('.knob-svg');
-            if (knob) {
-                e.preventDefault(); e.stopPropagation();
-                knob.setPointerCapture(e.pointerId);
-                this.activeKnob = knob.id;
-                let startY = e.clientY;
-                let startVal = this.getKnobMIDI(knob);
-                const onMove = (me) => {
-                    if (this.activeKnob === knob.id) {
-                        const delta = (startY - me.clientY) * 0.6;
-                        let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
-
-                        this.handleEQChange(knob, val, startVal);
-                    }
-                };
-                const onUp = () => { knob.releasePointerCapture(e.pointerId); this.activeKnob = null; knob.removeEventListener('pointermove', onMove); };
-                knob.addEventListener('pointermove', onMove);
-                knob.addEventListener('pointerup', onUp, { once: true });
-            }
+        // Encoder Delegation (EQ area)
+        startEvents.forEach(evtType => {
+            const eqArea = document.getElementById('eq-area');
+            if (!eqArea) return;
+            eqArea.addEventListener(evtType, (e) => {
+                const knob = e.target.closest('.knob-svg');
+                if (knob) {
+                    if (e.type === 'touchstart') e.preventDefault();
+                    e.stopPropagation();
+                    if (knob.setPointerCapture) knob.setPointerCapture(e.pointerId);
+                    this.activeKnob = knob.id;
+                    const coords = this.getEventCoords(e);
+                    let startY = coords.y;
+                    let startVal = this.getKnobMIDI(knob);
+                    const onMove = (me) => {
+                        if (this.activeKnob === knob.id) {
+                            const mCoords = this.getEventCoords(me);
+                            const delta = (startY - mCoords.y) * 0.6;
+                            let val = Math.max(0, Math.min(127, Math.round(startVal + delta)));
+                            this.handleEQChange(knob, val, startVal);
+                        }
+                    };
+                    const onUp = () => {
+                        if (knob.releasePointerCapture) knob.releasePointerCapture(e.pointerId);
+                        this.activeKnob = null;
+                        moveEvents.forEach(m => window.removeEventListener(m, onMove));
+                        upEvents.forEach(u => window.removeEventListener(u, onUp));
+                    };
+                    moveEvents.forEach(m => window.addEventListener(m, onMove, { passive: false }));
+                    upEvents.forEach(u => window.addEventListener(u, onUp, { once: true }));
+                }
+            }, { passive: false });
         });
 
         document.getElementById('eq-area').addEventListener('wheel', (e) => {

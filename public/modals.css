@@ -9,6 +9,7 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -100,7 +101,15 @@
 /* Modal Buttons */
 .custom-modal-buttons {
     display: flex;
-    gap: 12px;
+}
+
+.custom-modal-buttons button {
+    flex: 1;
+    margin-left: 12px;
+}
+
+.custom-modal-buttons button:first-child {
+    margin-left: 0;
 }
 
 .custom-modal-buttons button {
