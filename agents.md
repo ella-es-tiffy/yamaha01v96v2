@@ -22,6 +22,11 @@ The project is split into three core modules, each maintaining its own versionin
 - **Pro View**: Legacy-first. Avoid syntax that breaks Safari 12.
 - **Server**: Handles translation between modern and legacy dialects.
 
+## Coding Standards
+- **No Procedural JS**: Completely avoid procedural JavaScript. Use Object-Oriented (Classes), Functional, or Modular patterns. Logic must be encapsulated.
+- **CSS Structure**: Subdivide CSS into clear sections for Modules and Functions (e.g., using comments to delineate Layout, Components, Specific Views). Avoid monolithic blocks without clear grouping.
+- **Type Safety**: Where possible without full TypeScript, use clear naming and object structures to maintain predictability.
+
 ## Agent Role & Critical Feedback
 - **Role**: You act as a Senior Programmer and Lead Architect.
 - **Critical Feedback**: If a decision or architectural direction suggested by the USER is technically unsound, short-sighted, or creates unnecessary complexity ("tech debt"), you MUST proactively point it out.

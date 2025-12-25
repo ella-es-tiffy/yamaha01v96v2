@@ -1,187 +1,184 @@
-/**
- * MODULE: Server (Backend Bridge)
- * VERSION: v0.1.1-mon
- */
 const WebSocket = require('ws');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const Yamaha01V96Controller = require('./yamaha_controller');
 
-const WS_PORT = 3007;
+/**
+ * MODULE: Server (Backend Bridge)
+ * VERSION: v0.1.2-mon
+ * DESCRIPTION: Refactored into a Class-based architecture to avoid procedural JS.
+ */
+class YamahaServer {
+    constructor(wsPort = 3007, httpPort = 8009) {
+        this.wsPort = wsPort;
+        this.httpPort = httpPort;
+        this.yamaha = new Yamaha01V96Controller(0);
+        this.wss = null;
+        this.server = null;
+    }
 
-const yamaha = new Yamaha01V96Controller(0);
+    init() {
+        this.setupYamaha();
+        this.setupWebSocket();
+        this.setupHttpServer();
+        this.setupFileWatcher();
 
-yamaha.onStateChange = (state) => {
-    broadcast({ type: 'state', data: state });
-};
+        console.log('-------------------------------------------');
+        console.log('🚀 YAMAHA 01V96 MODULES INITIALIZED');
+        console.log(`✓ WebSocket: port ${this.wsPort}`);
+        console.log(`✓ HTTP: http://localhost:${this.httpPort}`);
+        console.log('-------------------------------------------');
+    }
 
-yamaha.onSyncStatus = (status) => {
-    broadcast({ type: 'syncStatus', status: status });
-};
+    setupYamaha() {
+        this.yamaha.onStateChange = (state) => this.broadcast({ type: 'state', data: state });
+        this.yamaha.onSyncStatus = (status) => this.broadcast({ type: 'syncStatus', status: status });
+        this.yamaha.onMeterChange = (state) => {
+            const meterData = {
+                channels: state.channels.map(ch => ch.meter),
+                master: state.master.meter
+            };
+            this.broadcast({ type: 'meters', data: meterData });
+        };
+        this.yamaha.onRawMidi = (msg, isOutgoing) => {
+            this.broadcast({ type: 'midiLog', data: Array.from(msg), isOutgoing: !!isOutgoing });
+        };
 
-yamaha.onMeterChange = (state) => {
-    // Only broadcast meter values, not full state
-    const meterData = {
-        channels: state.channels.map(ch => ch.meter),
-        master: state.master.meter
-    };
-    broadcast({ type: 'meters', data: meterData });
-};
+        if (this.yamaha.connect()) {
+            console.log('✓ Yamaha Controller Connected');
+        }
+    }
 
-yamaha.onRawMidi = (msg, isOutgoing) => {
-    broadcast({ type: 'midiLog', data: Array.from(msg), isOutgoing: !!isOutgoing });
-};
+    setupWebSocket() {
+        this.wss = new WebSocket.Server({ port: this.wsPort, host: '0.0.0.0' });
+        this.wss.on('connection', (ws, req) => {
+            const params = new URLSearchParams(req.url.split('?')[1]);
+            ws.clientType = params.get('client') === 'view' ? 'legacy' : 'modern';
 
-if (yamaha.connect()) {
-    console.log('-------------------------------------------');
-    console.log('🚀 YAMAHA 01V96 PRO TOUCH ENGINE v1.1stable');
-    console.log('✓ Yamaha Controller Active (with Smart Cache)');
-    console.log('-------------------------------------------');
-}
+            console.log(`[WS] Client connected (${ws.clientType})`);
+            ws.send(JSON.stringify({ type: 'state', data: this.yamaha.state }));
 
-const wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
+            ws.on('message', (msg) => this.handleWsMessage(ws, msg));
+        });
+    }
 
-wss.on('connection', (ws, req) => {
-    // Determine client type from URL (e.g., ws://host:port?client=view)
-    const params = new URLSearchParams(req.url.split('?')[1]);
-    ws.clientType = params.get('client') === 'view' ? 'legacy' : 'modern';
-
-    console.log(`[WS] Client connected (${ws.clientType}). Sending initial state.`);
-
-    // Initial state is always full for now, but we could trim it for legacy if needed
-    ws.send(JSON.stringify({ type: 'state', data: yamaha.state }));
-
-    ws.on('message', (message) => {
+    handleWsMessage(ws, message) {
         try {
             let data = JSON.parse(message);
-
-            // TRANSLATION: Legacy (View) -> Modern (Internal)
             if (ws.clientType === 'legacy' && data.t) {
-                const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ' };
-                data = {
-                    type: legacyMap[data.t] || data.t,
-                    channel: data.c,
-                    value: data.v,
-                    band: data.b,
-                    param: data.pa
-                };
+                data = this.translateLegacyToModern(data);
             }
 
-            console.log(`WS RX (${ws.clientType}):`, data.type, data.channel, data.value);
+            console.log(`WS RX (${ws.clientType}):`, data.type, data.channel || '');
 
-            // Execute command on Yamaha controller
-            if (data.type === 'setFader') yamaha.setFader(data.channel, data.value);
-            else if (data.type === 'setMute') yamaha.setMute(data.channel, data.value);
-            else if (data.type === 'sync') yamaha.deepSync();
-            else if (data.type === 'requestSync') yamaha.requestInitialState();
-            else if (data.type === 'setEQ') yamaha.setEQ(data.channel, data.band, data.param, data.value);
-            else if (data.type === 'setEQOn') yamaha.setEQOn(data.channel, data.value);
-            else if (data.type === 'setAtt') yamaha.setAttenuation(data.channel, data.value);
-            else if (data.type === 'setEQType') yamaha.setEQType(data.channel, data.value);
-            else if (data.type === 'resetEQ') yamaha.resetEQ(data.channel);
-            else if (data.type === 'recallEQ') yamaha.recallEQ(data.channel, data.preset);
-            else if (data.type === 'setSelectChannel') yamaha.setSelectedChannel(data.channel);
-            else if (data.type === 'setMeterInterval') yamaha.setMeterInterval(data.value, data.range);
-            else if (data.type === 'setPan') yamaha.setPan(data.channel, data.value);
-            else if (data.type === 'scanPresets') yamaha.scanPresets();
-            else if (data.type === 'saveEQ') yamaha.saveEQ(data.channel, data.preset, data.name);
-            else if (data.type === 'setMeterOffset') yamaha.setMeterOffset(data.value);
-            else if (data.type === 'setUIOption') yamaha.setUIOption(data.key, data.value);
-            else if (data.type === 'getChangelog') {
-                fs.readFile(path.join(__dirname, 'changelog.md'), 'utf8', (err, log) => {
-                    if (err) ws.send(JSON.stringify({ type: 'changelog', data: 'Changelog not found.' }));
-                    else ws.send(JSON.stringify({ type: 'changelog', data: formatMarkdown(log) }));
-                });
-            }
+            const y = this.yamaha;
+            const handlers = {
+                'setFader': () => y.setFader(data.channel, data.value),
+                'setMute': () => y.setMute(data.channel, data.value),
+                'sync': () => y.deepSync(),
+                'requestSync': () => y.requestInitialState(),
+                'setEQ': () => y.setEQ(data.channel, data.band, data.param, data.value),
+                'setEQOn': () => y.setEQOn(data.channel, data.value),
+                'setAtt': () => y.setAttenuation(data.channel, data.value),
+                'setEQType': () => y.setEQType(data.channel, data.value),
+                'resetEQ': () => y.resetEQ(data.channel),
+                'recallEQ': () => y.recallEQ(data.channel, data.preset),
+                'setSelectChannel': () => y.setSelectedChannel(data.channel),
+                'setMeterInterval': () => y.setMeterInterval(data.value, data.range),
+                'setPan': () => y.setPan(data.channel, data.value),
+                'scanPresets': () => y.scanPresets(),
+                'saveEQ': () => y.saveEQ(data.channel, data.preset, data.name),
+                'setMeterOffset': () => y.setMeterOffset(data.value),
+                'setUIOption': () => y.setUIOption(data.key, data.value),
+                'getChangelog': () => {
+                    fs.readFile(path.join(__dirname, 'changelog.md'), 'utf8', (err, log) => {
+                        const content = err ? 'Changelog not found.' : this.formatMarkdown(log);
+                        ws.send(JSON.stringify({ type: 'changelog', data: content }));
+                    });
+                }
+            };
 
-            // LIGHTWEIGHT BROADCAST: Send this change to all OTHER clients
-            if (data.type.startsWith('set')) {
-                broadcast(data, ws);
-            }
+            if (handlers[data.type]) handlers[data.type]();
+            if (data.type.startsWith('set')) this.broadcast(data, ws);
 
         } catch (e) { console.error('WS Error:', e); }
-    });
-});
+    }
 
-function formatMarkdown(md) {
-    return md
-        .replace(/## \[(.*?)\] - (.*?)\n/g, '<div style="margin-top:25px; border-bottom: 2px solid #333; padding-bottom:10px;"><h3 style="color:var(--accent); display:inline;">v$1</h3> <span style="color:#666; font-size:0.8rem;">($2)</span></div>')
-        .replace(/### (.*?)\n/g, '<h4 style="color:#aaa; border-left: 3px solid var(--accent); padding-left:10px; margin-top:15px;">$1</h4>')
-        .replace(/- (.*?)\n/g, '<div style="padding-left:15px; margin-bottom:5px;">• $1</div>')
-        .replace(/\n\n/g, '<br>');
-}
+    translateLegacyToModern(data) {
+        const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ' };
+        return {
+            type: legacyMap[data.t] || data.t,
+            channel: data.c,
+            value: data.v,
+            band: data.b,
+            param: data.pa
+        };
+    }
 
-function broadcast(data, skipWs) {
-    const modernMsg = JSON.stringify(data);
-
-    // Pre-calculate Legacy version
-    let legacyMsg = null;
-    if (data.type === 'meters') {
-        legacyMsg = JSON.stringify({ t: 'me', d: data.data });
-    } else if (data.type === 'reload') {
-        legacyMsg = JSON.stringify({ t: 'r' });
-    } else {
+    translateModernToLegacy(data) {
+        if (data.type === 'meters') return { t: 'me', d: data.data };
+        if (data.type === 'reload') return { t: 'r' };
         const revMap = { 'setFader': 'f', 'setMute': 'm', 'setPan': 'p', 'setEQ': 'e' };
         if (revMap[data.type]) {
-            legacyMsg = JSON.stringify({
+            return {
                 t: revMap[data.type],
                 c: data.channel,
                 v: data.value,
                 b: data.band,
                 pa: data.param
+            };
+        }
+        return null;
+    }
+
+    broadcast(data, skipWs) {
+        const modernMsg = JSON.stringify(data);
+        const legacyMsg = JSON.stringify(this.translateModernToLegacy(data));
+
+        this.wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN && client !== skipWs) {
+                const msg = (client.clientType === 'legacy' && legacyMsg !== 'null') ? legacyMsg : modernMsg;
+                client.send(msg);
+            }
+        });
+    }
+
+    setupHttpServer() {
+        this.server = http.createServer((req, res) => {
+            let filePath = (req.url.startsWith('/dev/'))
+                ? path.join(__dirname, 'dev', req.url.replace('/dev/', ''))
+                : path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+
+            const extname = path.extname(filePath);
+            const contentTypes = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html' };
+            const contentType = contentTypes[extname] || 'text/plain';
+
+            fs.readFile(filePath, (err, content) => {
+                if (err) { res.writeHead(404); res.end('404'); }
+                else { res.writeHead(200, { 'Content-Type': contentType }); res.end(content); }
+            });
+        });
+        this.server.listen(this.httpPort, '0.0.0.0');
+    }
+
+    setupFileWatcher() {
+        const viewDir = path.join(__dirname, 'public', 'view');
+        if (fs.existsSync(viewDir)) {
+            fs.watch(viewDir, { recursive: true }, (eventType, filename) => {
+                if (filename) this.broadcast({ type: 'reload' });
             });
         }
     }
 
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN && client !== skipWs) {
-            if (client.clientType === 'legacy' && legacyMsg) {
-                client.send(legacyMsg);
-            } else {
-                client.send(modernMsg);
-            }
-        }
-    });
+    formatMarkdown(md) {
+        return md
+            .replace(/## \[(.*?)\] - (.*?)\n/g, '<div style="margin-top:25px; border-bottom: 2px solid #333; padding-bottom:10px;"><h3 style="color:var(--accent); display:inline;">v$1</h3> <span style="color:#666; font-size:0.8rem;">($2)</span></div>')
+            .replace(/### (.*?)\n/g, '<h4 style="color:#aaa; border-left: 3px solid var(--accent); padding-left:10px; margin-top:15px;">$1</h4>')
+            .replace(/- (.*?)\n/g, '<div style="padding-left:15px; margin-bottom:5px;">• $1</div>')
+            .replace(/\n\n/g, '<br>');
+    }
 }
 
-const http = require('http');
-const fs = require('fs');
-/**
- * MODULE: Server (Backend Bridge)
- * VERSION: v0.1.1-mon
- */
-const express = require('express');
-const path = require('path');
-const HTTP_PORT = 8009;
-
-const server = http.createServer((req, res) => {
-    let filePath;
-    if (req.url.startsWith('/dev/')) {
-        filePath = path.join(__dirname, 'dev', req.url.replace('/dev/', ''));
-    } else {
-        filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
-    }
-    const extname = path.extname(filePath);
-    let contentType = 'text/html';
-    switch (extname) {
-        case '.js': contentType = 'text/javascript'; break;
-        case '.css': contentType = 'text/css'; break;
-    }
-    fs.readFile(filePath, (err, content) => {
-        if (err) { res.writeHead(404); res.end('404'); }
-        else { res.writeHead(200, { 'Content-Type': contentType }); res.end(content); }
-    });
-});
-
-// File Watcher for Standalone View Auto-Reload
-const VIEW_DIR = path.join(__dirname, 'public', 'view');
-if (fs.existsSync(VIEW_DIR)) {
-    fs.watch(VIEW_DIR, { recursive: true }, (eventType, filename) => {
-        if (filename) {
-            console.log(`[WATCH] Change detected in view: ${filename} (${eventType})`);
-            broadcast({ type: 'reload' });
-        }
-    });
-}
-
-server.listen(HTTP_PORT, '0.0.0.0', () => {
-    console.log(`🌐 Web Remote running at http://localhost:${HTTP_PORT}`);
-});
+// Instantiate and Run
+new YamahaServer().init();
