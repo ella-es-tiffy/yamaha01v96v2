@@ -577,10 +577,12 @@ class YamahaTouchRemote {
 
             const devPanel = document.getElementById('dev-panel');
             if (devPanel) devPanel.classList.toggle('active', this.debugUI);
+            document.body.classList.toggle('mode-dev-active', this.debugUI);
         });
 
         document.getElementById('dev-close-btn')?.addEventListener('click', () => {
             this.debugUI = false;
+            document.body.classList.remove('mode-dev-active');
             const btn = document.getElementById('debug-ui-btn');
             if (btn) {
                 btn.style.background = '#333';
