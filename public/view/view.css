@@ -609,3 +609,15 @@ header.view-header {
 .unlock-surface:active {
     transform: scale(0.95);
 }
+.unlock-surface div:first-child {
+    font-size: 1.5rem !important; /* Match Pro Touch */
+    margin-bottom: 10px;
+}
+
+.unlock-surface div:last-child {
+    font-size: 0.7rem !important; /* Match Pro Touch */
+    color: #aaa !important;
+    letter-spacing: 2px;
+    margin-top: 0 !important;
+    font-weight: 400 !important;
+}
