@@ -600,7 +600,7 @@ body.mode-dev-active #main-app-content {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
-    transition-delay: 250ms;
+    transition-delay: 0ms;
 }
 
 .dev-header {
