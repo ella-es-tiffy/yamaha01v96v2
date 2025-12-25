@@ -151,10 +151,11 @@ header.view-header {
 
 .peak-btn-vertical {
     position: absolute;
-    left: 70px;
+    left: 75px;
+    /* Right of Channel 1 */
+    top: 10px;
+    /* Top of meter area */
     /* After scale strip (~25px) + Channel 1 (~40px + margin) */
-    bottom: 35%;
-    /* Below -50dB mark */
     width: 30px;
     height: 80px;
     background: #1a1a1a;
