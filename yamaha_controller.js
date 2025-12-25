@@ -145,7 +145,7 @@ class Yamaha01V96Controller {
     }
 
     setMeterBroadcastRate(val) {
-        const safeVal = Math.max(100, Math.min(1000, val)); // Clamp to 100-1000ms
+        const safeVal = Math.max(1, Math.min(2000, val)); // Clamp to 1-2000ms
         this.state.settings.meterBroadcastRate = safeVal;
         this.saveSystemSettings();
         if (this.onStateChange) this.onStateChange(this.state);
