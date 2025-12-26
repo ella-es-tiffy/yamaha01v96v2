@@ -90,6 +90,7 @@ header.view-header {
     display: flex;
     /* Flex to align status dot */
     align-items: center;
+    flex: 1;
 }
 
 .model {
@@ -104,10 +105,18 @@ header.view-header {
     gap: 4px;
     height: 100%;
     align-items: center;
-    flex: 1;
-    /* Take up available space */
+    flex: 0 1 auto;
+    /* Take only needed space */
     justify-content: center;
     /* Center buttons */
+}
+
+.header-right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
 }
 
 /* Updated Lock Button Style to Match Pro Touch */
@@ -153,6 +162,14 @@ header.view-header {
     border-color: #666;
     box-shadow: none;
     /* Removed glow to match PT bank buttons */
+}
+
+#status-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ff0000;
+    border-radius: 50%;
+    display: inline-block;
 }
 
 .view-stage {
