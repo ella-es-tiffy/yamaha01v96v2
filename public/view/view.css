@@ -138,13 +138,6 @@ header.view-header {
     align-items: center;
 }
 
-.nav-btn.sync-btn-pv {
-    background: #004466;
-    color: #00d2ff;
-    border: 1px solid #006688;
-    margin-right: 5px;
-}
-
 /* Updated Lock Button Style to Match Pro Touch */
 .nav-btn.lock-btn-pv {
     background: #440000;

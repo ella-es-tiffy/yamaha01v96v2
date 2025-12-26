@@ -70,7 +70,6 @@ ProView.prototype.init = function () {
     this.setupEncoder();
     this.setupToggle();
     this.setupLockUI();
-    this.setupSyncBtn();
     this.setupBankSelector();
     this.startRaf();
     this.startLockPolling();
@@ -147,28 +146,6 @@ ProView.prototype.setupBankSelector = function () {
             // Re-render
             self.renderMeterBridge();
         });
-    }
-};
-
-ProView.prototype.setupSyncBtn = function () {
-    var self = this;
-    var btn = document.getElementById('sync-btn');
-    if (btn) {
-        var handleSync = function (e) {
-            if (e && e.preventDefault) e.preventDefault();
-            console.log('🔄 Syncing with Mixer (PV Local)...');
-            // Visual feedback
-            var dot = document.getElementById('status-dot');
-            if (dot) {
-                dot.style.backgroundColor = '#00d2ff';
-                dot.style.boxShadow = '0 0 10px #00d2ff';
-            }
-            if (self.socket && self.socket.readyState === 1) {
-                self.socket.send(JSON.stringify({ t: 'sync' }));
-            }
-        };
-        btn.addEventListener('click', handleSync);
-        btn.addEventListener('touchstart', handleSync);
     }
 };
 
