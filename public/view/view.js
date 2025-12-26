@@ -16,7 +16,7 @@ var ProView = function () {
     this.activeKnob = false;
     this.isMuted = false;
     this.settings = { meterOffset: 0 };
-    this.meterCount = 16;
+    this.meterCount = 32; // Default to 32 to see all mutes
     this.peakHoldEnabled = false;
 
     // Legacy Array fill
@@ -69,6 +69,7 @@ ProView.prototype.init = function () {
     this.setupEncoder();
     this.setupToggle();
     this.setupLockUI();
+    this.setupSyncBtn();
     this.startRaf();
     this.startLockPolling();
 };
@@ -124,6 +125,28 @@ ProView.prototype.setupLockUI = function () {
         };
         lockBtn.addEventListener('click', handleLock);
         lockBtn.addEventListener('touchstart', handleLock);
+    }
+};
+
+ProView.prototype.setupSyncBtn = function () {
+    var self = this;
+    var btn = document.getElementById('sync-btn');
+    if (btn) {
+        var handleSync = function (e) {
+            if (e && e.preventDefault) e.preventDefault();
+            console.log('🔄 Syncing with Mixer (PV Local)...');
+            // Visual feedback
+            var dot = document.getElementById('status-dot');
+            if (dot) {
+                dot.style.backgroundColor = '#00d2ff';
+                dot.style.boxShadow = '0 0 10px #00d2ff';
+            }
+            if (self.socket && self.socket.readyState === 1) {
+                self.socket.send(JSON.stringify({ t: 'sync' }));
+            }
+        };
+        btn.addEventListener('click', handleSync);
+        btn.addEventListener('touchstart', handleSync);
     }
 };
 
@@ -511,6 +534,30 @@ ProView.prototype.connect = function () {
                 self.syncLockState();
             }
             self.updateStatusIndicators(data);
+        } else if (t === 'm') { // Single Mute Update
+            var mElId = 's-m-' + data.c;
+            if (!self.elCache[mElId]) self.elCache[mElId] = document.getElementById(mElId);
+            var mEl = self.elCache[mElId];
+            if (mEl) {
+                if (v) mEl.classList.add('on');
+                else mEl.classList.remove('on');
+            }
+        } else if (t === 'n') { // Single Name Update
+            var nElId = 'label-' + data.c;
+            if (!self.elCache[nElId]) self.elCache[nElId] = document.getElementById(nElId);
+            var nEl = self.elCache[nElId];
+            if (nEl) nEl.innerText = v;
+        } else if (t === 'syncStatus') {
+            var dot = document.getElementById('status-dot');
+            if (dot) {
+                if (data.status === 'start') {
+                    dot.style.backgroundColor = '#00d2ff'; // Cyan during sync
+                    dot.style.boxShadow = '0 0 10px #00d2ff';
+                } else if (data.status === 'end') {
+                    dot.style.backgroundColor = '#34c759'; // Green when done
+                    dot.style.boxShadow = '0 0 10px #34c759';
+                }
+            }
         } else if (t === 'r' || t === 'reload') {
             location.reload();
         } else if (t === 'setUIOption' || t === 'l') {

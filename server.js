@@ -116,7 +116,7 @@ class YamahaServer {
     }
 
     translateLegacyToModern(data) {
-        const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ', 'l': 'setUILock' };
+        const legacyMap = { 'f': 'setFader', 'm': 'setMute', 'p': 'setPan', 'e': 'setEQ', 'l': 'setUILock', 'sync': 'sync' };
         return {
             type: legacyMap[data.t] || data.t,
             channel: data.c,

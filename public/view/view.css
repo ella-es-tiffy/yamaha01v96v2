@@ -118,20 +118,18 @@ header.view-header {
     align-items: center;
 }
 
+.nav-btn.sync-btn-pv {
+    background: #004466;
+    color: #00d2ff;
+    border: 1px solid #006688;
+    margin-right: 5px;
+}
+
 /* Updated Lock Button Style to Match Pro Touch */
 .nav-btn.lock-btn-pv {
     background: #440000;
     color: #ff6666;
     border: 1px solid #660000;
-    border-radius: 4px;
-    padding: 6px;
-    font-size: 0.7rem;
-    cursor: pointer;
-    font-weight: 900;
-    height: auto;
-    /* Allow auto height */
-    line-height: normal;
-    text-transform: uppercase;
 }
 
 .nav-btn.lock-btn-pv:active {
@@ -472,6 +470,7 @@ header.view-header {
     background: #222;
     /* Off state */
     margin-bottom: 1px;
+    transition: background 0.2s, box-shadow 0.2s;
 }
 
 .st-ind:last-child {
