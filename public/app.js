@@ -758,7 +758,7 @@ class YamahaTouchRemote {
 
     selectChannel(ch) {
         this.selectedChannel = (ch === 'master') ? 'master' : parseInt(ch);
-        console.log(`🔵 Selected: ${this.selectedChannel}`);
+        console.log(`🔵 [UI LOCAL] Selected: ${this.selectedChannel}`);
 
         this.send('setSelectChannel', { channel: ch });
 

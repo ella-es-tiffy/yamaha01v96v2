@@ -374,7 +374,12 @@ class Yamaha01V96Controller {
                     const val = message[message.indexOf(0xF7) - 1];
                     if (val >= 0 && val <= 56) {
                         const newSel = (val === 56) ? 'master' : (val + 1);
-                        if (this.state.selectedChannel !== newSel) {
+
+                        // IGNORE selection changes during Recall (prevents UI jump to Ch1)
+                        // Only allow updates if they match our target channel (Confirmation)
+                        if (this.recallTargetChannel && this.recallTargetChannel !== newSel) {
+                            console.log(`🛡️ IGNORED Mixer Selection -> ${newSel} (Target is ${this.recallTargetChannel})`);
+                        } else if (this.state.selectedChannel !== newSel) {
                             console.log(`📡 Mixer HW Selection -> ${newSel}`);
                             this.state.selectedChannel = newSel;
                             changed = true;
@@ -765,6 +770,15 @@ class Yamaha01V96Controller {
         this.output.sendMessage(msg);
         if (this.onRawMidi) this.onRawMidi(msg, true);
 
+        // Update local state immediately (Optimistic UI)
+        // This prevents the server from broadcasting an old selection (e.g., 1)
+        // back to the client during subsequent updates (like 'eq' changes).
+        const newSel = (channel === 'master') ? 'master' : parseInt(channel);
+        if (this.state.selectedChannel !== newSel) {
+            this.state.selectedChannel = newSel;
+            // Optionally emit state change if needed, but usually the command comes from UI anyway
+        }
+
         console.log(`🔵 SEL Channel -> ${channel} (Valve: ${val})`);
     }
 
@@ -817,7 +831,22 @@ class Yamaha01V96Controller {
 
         // 2. Tell the mixer to switch (Always needed for audio)
         if (!skipMidi) {
+            this.isRecalling = true; // LOCK SELECTION UPDATES
             this.eqPresets.recallEQ(channel, presetIdx);
+
+            // PREVENT JUMP: Force the mixer to confirm the current selection
+            // (Some firmware versions jump to Ch1 or the library target channel upon recall)
+            // Strategy: Double tap selection restore to catch it after processing
+            setTimeout(() => {
+                console.log(`[RECALL FIX] Force restoring selection to Ch${channel} (Attempt 1)`);
+                this.setSelectedChannel(channel);
+            }, 100);
+
+            setTimeout(() => {
+                console.log(`[RECALL FIX] Force restoring selection to Ch${channel} (Attempt 2)`);
+                this.setSelectedChannel(channel);
+                this.isRecalling = false; // UNLOCK
+            }, 600); // Slightly longer than 500ms second tap
         }
 
         // 3. Request Logic (The "Spam Filter")
@@ -831,10 +860,14 @@ class Yamaha01V96Controller {
 
         // 4. Verification Sync (Only for unknown presets)
         console.log(`[DB] Unknown Preset #${presetIdx} - Triggering discovery sync...`);
+        this.isRecalling = true; // Ensure lock is held during sync
         if (this.onSyncStatus) this.onSyncStatus('start-eq');
 
         // Give the mixer enough time to load the preset into its DSP (600ms is usually safe)
         setTimeout(async () => {
+            // Re-enforce selection again just to be safe before syncing
+            this.setSelectedChannel(channel);
+
             console.log(`[SYNC] Fetching parameters for Preset #${presetIdx} on Ch ${channel}`);
             await this.syncEQForChannel(channel);
 
@@ -855,6 +888,8 @@ class Yamaha01V96Controller {
             }
             if (this.onStateChange) this.onStateChange(this.state);
             if (this.onSyncStatus) this.onSyncStatus('end-eq');
+
+            this.isRecalling = false; // UNLOCK FINAL
         }, 800);
     }
 
