@@ -254,7 +254,7 @@ class YamahaTouchRemote {
         globalRow.style.overflow = 'hidden';
         globalRow.style.border = '1px solid var(--glass-border)';
         globalRow.style.borderRadius = '6px';
-        globalRow.style.marginBottom = '20px';
+        globalRow.style.marginBottom = '5px';
         globalRow.style.background = '#0d0d0d'; // Darker background
 
         const innerGrid = document.createElement('div');
