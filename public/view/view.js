@@ -16,7 +16,8 @@ var ProView = function () {
     this.activeKnob = false;
     this.isMuted = false;
     this.settings = { meterOffset: 0 };
-    this.meterCount = 32; // Default to 32 to see all mutes
+    this.meterCount = 16;
+    this.currentBankStart = 1;
     this.peakHoldEnabled = false;
 
     // Legacy Array fill
@@ -70,6 +71,7 @@ ProView.prototype.init = function () {
     this.setupToggle();
     this.setupLockUI();
     this.setupSyncBtn();
+    this.setupBankSelector();
     this.startRaf();
     this.startLockPolling();
 };
@@ -125,6 +127,26 @@ ProView.prototype.setupLockUI = function () {
         };
         lockBtn.addEventListener('click', handleLock);
         lockBtn.addEventListener('touchstart', handleLock);
+    }
+};
+
+ProView.prototype.setupBankSelector = function () {
+    var self = this;
+    var btns = document.querySelectorAll('.bank-btn');
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function (e) {
+            var start = parseInt(this.getAttribute('data-start'));
+            if (self.currentBankStart === start) return;
+
+            self.currentBankStart = start;
+
+            // UI Update
+            for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
+            this.classList.add('active');
+
+            // Re-render
+            self.renderMeterBridge();
+        });
     }
 };
 
@@ -344,6 +366,7 @@ ProView.prototype.renderMeterBridge = function () {
     bridge.appendChild(scaleStrip);
 
     for (var i = 1; i <= this.meterCount; i++) {
+        var chNum = this.currentBankStart + i - 1;
         var strip = document.createElement('div');
         strip.className = 'bridge-strip';
         strip.innerHTML =
@@ -373,7 +396,7 @@ ProView.prototype.renderMeterBridge = function () {
             '<div class="st-ind fx" id="s-f-' + i + '"></div>' +
             '<div class="st-ind mute" id="s-m-' + i + '"></div>' +
             '</div>' +
-            '<div class="strip-label" id="label-' + i + '">' + i + '</div>';
+            '<div class="strip-label" id="label-' + i + '">' + chNum + '</div>';
         bridge.appendChild(strip);
     }
     this.elCache = {};
@@ -392,7 +415,8 @@ ProView.prototype.updateMeters = function (channels) {
     }
 
     for (var i = 1; i <= this.meterCount; i++) {
-        var val = channels[i - 1] || 0;
+        var chIdx = this.currentBankStart + i - 2; // Offset for 0-based array
+        var val = channels[chIdx] || 0;
         var gateThreshold = (offset / 100) * 32;
         if (val < gateThreshold) val = 0;
 
@@ -482,7 +506,8 @@ ProView.prototype.updateStatusIndicators = function (data) {
         var arr = data[key];
         if (arr && arr.length) {
             for (var i = 1; i <= self.meterCount; i++) {
-                var state = arr[i - 1];
+                var chIdx = self.currentBankStart + i - 2;
+                var state = arr[chIdx];
                 var elId = 's-' + type + '-' + i;
                 if (!self.elCache[elId]) self.elCache[elId] = document.getElementById(elId);
                 var el = self.elCache[elId];
@@ -535,18 +560,26 @@ ProView.prototype.connect = function () {
             }
             self.updateStatusIndicators(data);
         } else if (t === 'm') { // Single Mute Update
-            var mElId = 's-m-' + data.c;
-            if (!self.elCache[mElId]) self.elCache[mElId] = document.getElementById(mElId);
-            var mEl = self.elCache[mElId];
-            if (mEl) {
-                if (v) mEl.classList.add('on');
-                else mEl.classList.remove('on');
+            var chNum = parseInt(data.c);
+            if (chNum >= self.currentBankStart && chNum < self.currentBankStart + self.meterCount) {
+                var localIdx = chNum - self.currentBankStart + 1;
+                var mElId = 's-m-' + localIdx;
+                if (!self.elCache[mElId]) self.elCache[mElId] = document.getElementById(mElId);
+                var mEl = self.elCache[mElId];
+                if (mEl) {
+                    if (v) mEl.classList.add('on');
+                    else mEl.classList.remove('on');
+                }
             }
         } else if (t === 'n') { // Single Name Update
-            var nElId = 'label-' + data.c;
-            if (!self.elCache[nElId]) self.elCache[nElId] = document.getElementById(nElId);
-            var nEl = self.elCache[nElId];
-            if (nEl) nEl.innerText = v;
+            var chNumName = parseInt(data.c);
+            if (chNumName >= self.currentBankStart && chNumName < self.currentBankStart + self.meterCount) {
+                var localIdxN = chNumName - self.currentBankStart + 1;
+                var nElId = 'label-' + localIdxN;
+                if (!self.elCache[nElId]) self.elCache[nElId] = document.getElementById(nElId);
+                var nEl = self.elCache[nElId];
+                if (nEl) nEl.innerText = v;
+            }
         } else if (t === 'syncStatus') {
             var dot = document.getElementById('status-dot');
             if (dot) {
