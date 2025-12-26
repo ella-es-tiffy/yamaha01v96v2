@@ -31,7 +31,7 @@
 body {
     background-color: var(--bg-main);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, system-ui, sans-serif;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
@@ -609,13 +609,16 @@ header.view-header {
 .unlock-surface:active {
     transform: scale(0.95);
 }
+
 .unlock-surface div:first-child {
-    font-size: 1.5rem !important; /* Match Pro Touch */
+    font-size: 1.5rem !important;
+    /* Match Pro Touch */
     margin-bottom: 10px;
 }
 
 .unlock-surface div:last-child {
-    font-size: 0.7rem !important; /* Match Pro Touch */
+    font-size: 0.7rem !important;
+    /* Match Pro Touch */
     color: #aaa !important;
     letter-spacing: 2px;
     margin-top: 0 !important;
