@@ -1077,16 +1077,22 @@ class YamahaTouchRemote {
 
     connect() {
         this.socket = new WebSocket(this.wsUrl);
+
         this.socket.onopen = () => {
-            document.getElementById('status').innerText = 'Verbunden';
-            document.getElementById('status').style.color = '#34c759';
-            // Trigger initial UI sync after connection
-            setTimeout(() => this.syncFaders(), 500);
+            document.getElementById('status-dot').style.backgroundColor = '#00ff00';
+            document.getElementById('status-dot').style.boxShadow = '0 0 10px #00ff00';
+            this.send('get_state');
         };
+
         this.socket.onclose = () => {
-            document.getElementById('status').innerText = 'Verbindung unterbrochen';
-            document.getElementById('status').style.color = '#ff3b30';
-            setTimeout(() => this.connect(), 5000); // Auto-reconnect
+            document.getElementById('status-dot').style.backgroundColor = '#ff0000';
+            document.getElementById('status-dot').style.boxShadow = 'none';
+            setTimeout(() => this.connect(), 2000); // Auto-reconnect
+        };
+
+        this.socket.onerror = (err) => {
+            console.error('WS Error:', err);
+            document.getElementById('status-dot').style.backgroundColor = '#ff0000';
         };
         this.socket.onmessage = (msg) => {
             const data = JSON.parse(msg.data);
