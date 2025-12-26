@@ -145,9 +145,10 @@ header.view-header {
     border: 1px solid #333;
     height: auto;
     border-radius: 4px;
-    padding: 4px 8px;
-    /* Pro Touch padding */
-    font-size: 0.65rem;
+    padding: 8px 20px;
+    /* Increased for touch */
+    font-size: 0.75rem;
+    /* Larger font */
     font-weight: bold;
     text-transform: uppercase;
     cursor: pointer;
