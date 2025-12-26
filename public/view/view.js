@@ -479,18 +479,18 @@ ProView.prototype.connect = function () {
     this.socket = new WebSocket(this.wsUrl);
 
     this.socket.onopen = function () {
-        var statusEl = document.getElementById('status');
+        var statusEl = document.getElementById('status-dot');
         if (statusEl) {
-            statusEl.innerText = 'CONNECTED';
-            statusEl.style.color = '#34c759';
+            statusEl.style.backgroundColor = '#00ff00';
+            statusEl.style.boxShadow = '0 0 10px #00ff00';
         }
     };
 
     this.socket.onclose = function () {
-        var statusEl = document.getElementById('status');
+        var statusEl = document.getElementById('status-dot');
         if (statusEl) {
-            statusEl.innerText = 'DISCONNECTED';
-            statusEl.style.color = '#ff3b30';
+            statusEl.style.backgroundColor = '#ff0000';
+            statusEl.style.boxShadow = 'none';
         }
         setTimeout(function () { self.connect(); }, 5000);
     };
