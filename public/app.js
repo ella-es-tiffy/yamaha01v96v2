@@ -308,8 +308,9 @@ class YamahaTouchRemote {
         cover.className = 'safety-cover';
         cover.id = 'eq-safety-cover';
         cover.innerHTML = `
-            <div class="safety-handle"></div>
-            <div class="safety-label">LOCK</div>
+            <div style="font-size: 2rem; margin-bottom: 5px;">🔒</div>
+            <div style="font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; color: #888;">LOCKED</div>
+            <div style="font-size: 0.5rem; color: #555; margin-top: 5px;">TAP TO EDIT</div>
         `;
 
         // Add a "CLOSE" tab that only appears when open
