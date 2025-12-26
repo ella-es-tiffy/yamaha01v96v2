@@ -116,7 +116,6 @@ header.view-header {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 15px;
 }
 
 /* Updated Lock Button Style to Match Pro Touch */
@@ -170,6 +169,7 @@ header.view-header {
     background-color: #ff0000;
     border-radius: 50%;
     display: inline-block;
+    margin-left: 15px;
 }
 
 .view-stage {
