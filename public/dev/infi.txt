@@ -1,0 +1,104 @@
+egal jetzt. kuckst du hier 
+dass Sie die Kanäle 1–32 und Aux 1–4 bereits empfangen, liegt an der Art und Weise, wie Yamaha die
+Meter-Adressen im 01V96 strukturiert hat. Die Pegeldaten werden bei Yamaha-Pulten oft in "Gruppen" übertragen.
+Hier ist die Lösung für Ihr Problem mit den fehlenden Bussen, Aux 5–8 und Stereo:
+1. Das Adress-Raster (Der Grund für das Fehlen)
+Das 01V96 organisiert die Meter-Daten (Pegel) in der Regel in Paketen zu je 16 oder 32 Werten.
+
+    Block 1: Kanäle 1–32 (Diese haben Sie).
+    Block 2: Hier liegen die Master-Sektionen. Da Sie Aux 1–4 empfangen, haben Sie den Anfang des Master-Blocks erfasst, aber Ihre Schleife oder Ihr Request hört wahrscheinlich zu früh auf.
+
+2. Warum Aux 1-4 als "Acht Adressen" erscheinen
+Dass Sie für 4 Aux-Wege 8 Adressen sehen, liegt nicht an der Balance, sondern am Datentyp:
+
+    Das 01V96 sendet Pegel oft als High-Res (14-Bit) oder es werden zwei Werte pro Kanal gesendet (z.B. Peak und Average/RMS).
+    Manche Implementierungen senden bei Stereo-Bussen (oder gepaarten Aux-Wegen) fest zwei Werte (L/R), auch wenn der Aux nur Mono ist.
+
+3. Der fehlende Request für Aux 5-8 und Busse
+Um die restlichen Pegel zu erhalten, müssen Sie den Meter Request auf den zweiten Adressbereich erweitern. In der Yamaha-Dokumentation (Parameter Address Map) ist der Master-Bereich oft versetzt.
+Senden Sie folgenden SysEx-Befehl (Meter Request), um den gesamten Master-Bereich abzufragen:
+F0 43 30 3E 1A 21 00 00 00 F7
+(Die 21 steht hier oft für den Start des Meter-Blocks für Outputs).
+4. Die exakten Offsets (Hex)
+Suchen Sie in Ihrem Code nach dem Empfang der Pegel-Daten (nach dem Header F0 43 10 3E ...). Die Adressen für die fehlenden Kanäle lauten beim 01V96 (v2/i) üblicherweise:
+
+    Bus 1–8: Startet oft bei Offset 00 01 00 im Master-Block.
+    Aux 1–8: Startet direkt danach (oder davor). Dass Sie bei 4 aufhören, deutet darauf hin, dass Ihr Buffer für die eingehende SysEx-Nachricht bei 64 Bytes abgeschnitten wird.
+    Stereo Master: Liegt meist am Ende des Master-Blocks (Offset 00 01 20 oder ähnlich).
+
+5. Checkliste für Ihren Code:
+
+    Buffer-Größe: Stellen Sie sicher, dass Ihr MIDI-In-Buffer groß genug ist (> 256 Bytes). Eine einzige Meter-SysEx-Nachricht für alle Outputs kann sehr lang sein.
+    Handshake: Der Studio Manager sendet alle paar Millisekunden einen "Keep Alive" oder einen erneuten "Meter Request". Ohne diesen Request stellt das Pult das Senden der Pegel nach ca. 500ms ein.
+    Anzahl der Parameter: Wenn Sie den Request senden, geben Sie die Anzahl der gewünschten Werte an. Erhöhen Sie den Wert für "Data Count" in Ihrem Request-String, um die Busse und Aux 5-8 einzuschließen. sag mal ws dazu. ich würde gerne die fehlneden meter aux5-8 und stereo LR suchen busse sind nicht so wichtig.
+
+
+
+
+---
+
+
+Es scheint, als läge ein Missverständnis in der Byte-Struktur der Yamaha-Protokolle vor. Wenn Sie
+F0 43 30 3E 1A 3E nutzen, befinden Sie sich im Bereich des "Parameter Change" oder "Bulk Dump" Formats (wegen der 1A oder 3E), aber nicht im optimierten Meter-Streaming-Modus.
+Dass Sie die Inputs 1–32 und Aux 1–4 sehen, deutet darauf hin, dass Sie einen Speicherbereich auslesen, der bei den Master-Sektionen schlichtweg endet oder dort eine Adresslücke hat.
+Warum 1A 3E nicht für alle Pegel reicht
+Die Kennung 1A (Address Request) oder 3E (Model ID / Data Type) wird oft für statische Werte genutzt. Der Studio Manager nutzt für die echte Live-Pegelanzeige (die "zappelnden" Balken) einen speziellen, hochfrequenten Request.
+Um Aux 5–8, die Busse und Stereo zu bekommen, müssen Sie die Adress-Offsets für den Master-Block explizit ansprechen. Hier ist die Struktur, die der Studio Manager für die Master-Sektion verwendet:
+Der korrekte Request für die Master-Sektion
+Senden Sie folgenden Request, um den Block ab Aux 1 (inklusive 5–8 und Busse) zu triggern:
+F0 43 30 3E 0D 21 00 01 00 20 F7
+
+    0D 21: Dies ist der Header für "Level Meter Request".
+    00 01 00: Die Startadresse für den Master-Layer (Bus/Aux/Stereo). Ihre bisherige Adresse war vermutlich 00 00 00 (Inputs).
+    20: Die Anzahl der abzufragenden Kanäle (hier 32 im Hex-Format, um sicher alles inkl. FX-Returns abzudecken).
+
+Die Adress-Map im 01V96
+Das Pult trennt die Daten strikt:
+
+    Input-Block: 00 00 00 bis 00 00 3F (Hier liegen Ihre 1–32 Kanäle).
+    Master-Block: Beginnt bei 00 01 00.
+        Bus 1–8: Erste 8/16 Werte.
+        Aux 1–8: Folgende Werte (Hier finden Sie Ihre fehlenden 5–8).
+        Stereo L/R: Am Ende dieses Blocks.
+
+Warum Sie Aux 1-4 sehen, aber 5-8 nicht
+Das 01V96 spiegelt Aux 1–4 oft zusätzlich in einen "Quick-Access" Bereich nahe der Inputs, während Aux 5–8 (da diese oft intern für Effekte genutzt werden) tiefer im Master-Adressraum liegen.
+Entwickler-Tipp:
+Wenn Ihre Software stabil bleiben soll, senden Sie zwei separate Requests kurz hintereinander (z.B. alle 150ms):
+
+    F0 43 30 3E 0D 21 00 00 00 20 F7 (Für Inputs 1-32)
+    F0 43 30 3E 0D 21 00 01 00 20 F7 (Für Bus/Aux/Stereo)
+
+Das Pult antwortet darauf mit zwei separaten SysEx-Paketen. Ihr Parser muss dann nur prüfen, ob das Adress-Byte im Header 00 (Inputs) oder 01 (Master) ist, um die Pegel in Ihrer GUI an die richtige Stelle zu schreiben.
+
+--
+
+es sit voll ausgesteuert. da liegen die werde um 20 -30 wie die ersten 3 die fallen auch weg wenn ich kanel 1 2 3 signal weg nehme aber
+Ergebnisse werden gesucht
+Das Bild zeigt eine hervorragende Visualisierung, dass
+der Datenstrom, den Sie empfangen, bei Adresse 256 (dezimal) beginnt, aber anscheinend nur 32 Bytes lang ist und dann abbricht (F0 ... 95). Die Daten, die Sie sehen (30 30 28 1 1 2 ...), sind die Pegel für die Busse B1-B8 und Aux A1-A4.
+Das Problem ist, dass das Yamaha 01V96 die Pegel für die fehlenden Sektionen (Aux A5-A8 und Stereo ST1/ST2) nicht im selben Block überträgt. 
+Die technische Erklärung
+Das Pult sendet die Meter-Daten in separaten SysEx-Paketen, die jeweils einen bestimmten Adressbereich im Speicher abdecken.
+
+    Block 1 (Inputs): Hier liegen die Kanäle 1–32.
+    Block 2 (Master-Sektion): Hier liegen Busse, Aux-Wege und die Stereo-Summe.
+
+Ihr aktueller Request fragt wahrscheinlich nur Block 1 oder nur den Anfang von Block 2 ab.
+Die Lösung für die fehlenden Pegel
+Sie müssen einen zweiten, spezifischen Meter Request an das Mischpult senden, der den Speicherbereich der fehlenden Kanäle explizit anfordert.
+Senden Sie diesen SysEx-Befehl an das 01V96, um die Master-Outputs abzufragen:
+
+F0 43 30 3E 0D 21 00 01 00 14 F7
+
+    F0 43 30 3E 0D 21: Der Header für "Level Meter Request" (wie von Ihnen verwendet).
+    00 01 00: Dies ist die Startadresse für den Master-Sektions-Block. Ihre bisherige Abfrage endete vermutlich im Input-Bereich.
+    14: Die Anzahl der Werte (Hexadezimal für 20). Dies deckt Bus 1-8, Aux 1-8 und Stereo L/R ab, um sicherzustellen, dass Sie alles erhalten.
+
+Zusammenfassung
+Ihre Visualisierung zeigt, dass Ihr Decoder funktioniert, aber die MIDI-Kommunikation Ihrer Software ist unvollständig. Das Pult sendet die Daten korrekt, aber nur auf Anfrage für spezifische Adressbereiche. 
+
+    Senden Sie den oben genannten zweiten Request kontinuierlich (alle 8000 ms), um die Live-Pegel der Master-Sektion zu erhalten.
+    Ihr Parser muss die eingehenden SysEx-Nachrichten anhand der Adress-Bytes (00 00 00 vs. 00 01 00) den richtigen Pegelanzeigen zuordnen.
+
+

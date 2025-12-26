@@ -1,7 +1,7 @@
 /**
  * MODULE: Pro Touch (Modern Remote)
- * VERSION: v0.1.1-mon (Yamaha Classic Aesthetic & Hex Debug)
- */
+ * VERSION: v0.3-pt (Stable)
+        */
 
 class YamahaTouchRemote {
     constructor() {

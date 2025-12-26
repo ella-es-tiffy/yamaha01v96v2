@@ -1,8 +1,7 @@
 /**
  * MODULE: Pro View (Legacy Monitor)
- * VERSION: v0.2.37-stable-ios12 (ES5 + Polling)
+ * VERSION: v0.3-pv (Stable Mixed Support)
  * NOTICE: These are the stable settings for iOS 12 iPad 2/3/4.
- * Features: ES5 Transpilation, HTTP Polling Lock, No CSS Rotation.
  */
 var ProView = function () {
     this.wsUrl = 'ws://' + window.location.hostname + ':3007?client=view';

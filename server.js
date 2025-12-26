@@ -6,7 +6,7 @@ const Yamaha01V96Controller = require('./yamaha_controller');
 
 /**
  * MODULE: Server (Backend Bridge)
- * VERSION: v0.1.2-mon
+ * VERSION: v0.3-se (Stable)
  * DESCRIPTION: Refactored into a Class-based architecture to avoid procedural JS.
  */
 class YamahaServer {

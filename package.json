@@ -1,6 +1,6 @@
 {
   "name": "yamaha-01v96-web-control",
-  "version": "1.1.0",
+  "version": "0.3.0",
   "description": "Web-based MIDI control for Yamaha 01V96 V2 via VirtualHere",
   "main": "server.js",
   "scripts": {
